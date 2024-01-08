@@ -89,6 +89,7 @@ func main() {
 
     var wg sync.WaitGroup
     results := make([]map[string]int, len(graph.Nodes))
+    print(results)
     for i, start := range graph.Nodes {
         wg.Add(1)
         go func(i int, start *Node) {
