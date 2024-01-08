@@ -8,7 +8,7 @@ import (
 func main() {
 
 	var graphe [5][5]int
-	graphe[0][0], graphe[0][1], graphe[0][2], graphe[0][3], graphe[0][4] = 1, 1, 2, 3, -1
+	graphe[0][0], graphe[0][1], graphe[0][2], graphe[0][3], graphe[0][4] = -1, -1, 2, 3, -1
 	graphe[1][0], graphe[1][1], graphe[1][2], graphe[1][3], graphe[1][4] = -1, -1, 2, 5, -1
 	graphe[2][0], graphe[2][1], graphe[2][2], graphe[2][3], graphe[2][4] = 1, 1, -1, -1, -1
 	graphe[3][0], graphe[3][1], graphe[3][2], graphe[3][3], graphe[3][4] = 1, -1, -1, -1, 7
@@ -19,7 +19,7 @@ func main() {
 		time.Sleep(time.Second * 3)
 	}
 
-	fmt.Print("fin")
+	fmt.Print("fin\n")
 
 }
 
@@ -78,6 +78,5 @@ func dijkstra(G [5][5]int, s int) {
 		}
 	}
 
-	//time.Sleep(time.Second * 3)
 	fmt.Print("Sommet source = ", s, " ; Vecteur de distance : ", d, "\n")
 }
