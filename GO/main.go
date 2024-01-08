@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-func main() {
+func main1() {
 
 	var graphe [5][5]int
 	graphe[0][0], graphe[0][1], graphe[0][2], graphe[0][3], graphe[0][4] = -1, -1, 2, 3, -1
