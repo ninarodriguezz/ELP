@@ -10,10 +10,8 @@ type Graph struct {
 }
 
 type Node struct {
-	Name    string
-	Edges   []*Edge
-	Visited bool
-	Dist    int
+	Name  string
+	Edges []*Edge
 }
 
 type Edge struct {
@@ -34,7 +32,7 @@ func Dijkstra(g *Graph, start *Node) map[*Node]int {
 	}
 
 	for len(unvisited) != 0 {
-		u := minDist(unvisited)
+		u := minDist(unvisited, distances)
 		if u == nil {
 			break
 		}
@@ -50,12 +48,12 @@ func Dijkstra(g *Graph, start *Node) map[*Node]int {
 	return distances
 }
 
-func minDist(unvisited map[*Node]struct{}) *Node {
+func minDist(unvisited map[*Node]struct{}, distances map[*Node]int) *Node {
 	min := 1<<31 - 1
 	var n *Node
 	for node := range unvisited {
-		if node.Dist < min {
-			min = node.Dist
+		if distances[node] < min {
+			min = distances[node]
 			n = node
 		}
 	}
