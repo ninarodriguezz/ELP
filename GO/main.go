@@ -14,8 +14,13 @@ func main() {
 	graphe[3][0], graphe[3][1], graphe[3][2], graphe[3][3], graphe[3][4] = 1, -1, -1, -1, 7
 	graphe[4][0], graphe[4][1], graphe[4][2], graphe[4][3], graphe[4][4] = 1, 6, 6, 2, -1
 
-	go dijkstraTousSommets(graphe)
-	time.Sleep(time.Second * 3)
+	for sommet := 0; sommet < len(graphe); sommet++ {
+		go dijkstra(graphe, sommet)
+		time.Sleep(time.Second * 3)
+	}
+
+	fmt.Print("fin")
+
 }
 
 func isIn(a int, b []int) bool {
@@ -42,7 +47,7 @@ func trouve_min(d [5]int, marqués []int) int {
 	return sommet
 }
 
-func dijkstra(G [5][5]int, s int) [5]int {
+func dijkstra(G [5][5]int, s int) {
 
 	// Initialisation
 	var d [5]int
@@ -73,11 +78,6 @@ func dijkstra(G [5][5]int, s int) [5]int {
 		}
 	}
 
-	return d
-}
-
-func dijkstraTousSommets(G [5][5]int) {
-	for sommet := 0; sommet < len(G); sommet++ {
-		fmt.Print("Sommet source = ", sommet, " ; Vecteur de distance : ", dijkstra(G, sommet), "\n")
-	}
+	//time.Sleep(time.Second * 3)
+	fmt.Print("Sommet source = ", s, " ; Vecteur de distance : ", d, "\n")
 }
