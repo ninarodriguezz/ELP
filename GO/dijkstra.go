@@ -10,10 +10,10 @@ type Graph struct {
 }
 
 type Node struct {
-	Name  string
-	Edges []*Edge
-	Channel chan Message
-	RoutingTable map[string]map[string]string
+	Name         string
+	Edges        []*Edge
+	Channel      chan Message
+	RoutingTable map[string]map[string]*Node
 }
 
 type Edge struct {
@@ -27,21 +27,25 @@ type Message struct {
 	Content     string
 }
 
-func sendMessage(messageChan chan<- Message, source *Node, destination *Node, content string) {
-	message := Message{Source: source, Destination: destination, Content: content}
-	messageChan <- message
+func sendMessage(messageChan chan Message, messageEnvoye Message) {
+	messageChan <- messageEnvoye
 }
 
-func rcvMessage(messageChan <-chan Message, source *Node, destination *Node, content string) {
-	message :=
+func hello(nodeSrc *Node, nodeDst *Node) {
+	channel := nodeSrc.Channel
+	helloMessage := Message{Source: nodeSrc, Destination: nodeDst, Content: "Hello"}
+	sendMessage(channel, helloMessage)
 }
 
-func hello(nodeSrc *Node, nodeDst *Node, channel chan) {
-	ch := make(chan chanNum)
-	sendMessage(ch, nodeSrc, nodeDst, "Hello")
+func routing(node *Node) {
 	select {
-	case receivedMessage := <- ch:
-		if receivedMessage.Destination == nodeSrc {
+	case receivedMessage := <-node.Channel:
+		if receivedMessage.Destination == node {
+			helloAckMessage := Message{Source: receivedMessage.Destination, Destination: receivedMessage.Source, Content: "Hello Ack"}
+			next_hop := node.RoutingTable[helloAckMessage.Destination.Name]["next_hop"]
+			channel := next_hop.Channel
+			sendMessage(channel, helloAckMessage)
+		} else {
 
 		}
 	}
@@ -96,11 +100,6 @@ func minDist(unvisited map[*Node]struct{}, distances map[*Node]int) *Node {
 	return n
 }
 
-func sendMessage(messageChan chan<- Message, source *Node, destination *Node, content string) {
-	message := Message{Source: source, Destination: destination, Content: content}
-	messageChan <- message
-}
-
 func processMessages(messageChan <-chan Message) {
 	for {
 		select {
@@ -144,7 +143,7 @@ func main() {
 	graph := creation_graph()
 	var wg sync.WaitGroup
 	// results := make(map[string]map[string]map[string]string, len(graph.Nodes))
-	results := make(map[string]map[string]map[string]string)
+	results := make(map[string]map[string]map[string]*Node)
 	// print(results)
 	for _, start := range graph.Nodes {
 		wg.Add(1)
@@ -152,11 +151,11 @@ func main() {
 			defer wg.Done()
 			distances, next_hop := Dijkstra(&graph, start)
 			// fmt.Print("next_hop :", next_hop, "\n")
-			results[start.Name] = make(map[string]map[string]string)
-			for node, dist := range distances {
-				results[start.Name][node.Name] = make(map[string]string)
-				results[start.Name][node.Name]["next_hop"] = (next_hop[node]).Name
-				results[start.Name][node.Name]["distance"] = fmt.Sprint(dist)
+			results[start.Name] = make(map[string]map[string]*Node)
+			for node, _ := range distances {
+				results[start.Name][node.Name] = make(map[string]*Node)
+				results[start.Name][node.Name]["next_hop"] = (next_hop[node]) //.Name
+				// results[start.Name][node.Name]["distance"] = fmt.Sprint(dist)
 			}
 		}(start)
 	}
