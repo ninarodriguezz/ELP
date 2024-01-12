@@ -30,6 +30,22 @@ func sendMessage(messageChan chan<- Message, source *Node, destination *Node, co
 	messageChan <- message
 }
 
+func rcvMessage(messageChan <-chan Message, source *Node, destination *Node, content string) {
+	message :=
+}
+
+func hello(nodeSrc *Node, nodeDst *Node, channel chan) {
+	ch := make(chan chanNum)
+	sendMessage(ch, nodeSrc, nodeDst, "Hello")
+	select {
+	case receivedMessage := <- ch:
+		if receivedMessage.Destination == nodeSrc {
+
+		}
+	}
+
+}
+
 func Dijkstra(g *Graph, start *Node) (map[*Node]int, map[*Node]*Node) {
 	unvisited := make(map[*Node]struct{})
 	distances := make(map[*Node]int)
@@ -131,10 +147,12 @@ func main() {
 	}
 	wg.Wait()
 
+	// Affichage table de routage pour chaque noeud
 	for _, start := range graph.Nodes {
 		fmt.Println("\nDistances les plus courtes du noeud", start.Name)
 		for dest, route := range results[start.Name] {
 			fmt.Print(start.Name, " -> ", dest, " : ", route["next_hop"], " -- ", route["distance"], "\n")
 		}
 	}
+
 }
