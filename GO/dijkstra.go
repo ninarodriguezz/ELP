@@ -12,7 +12,7 @@ type Graph struct {
 type Node struct {
 	Name  string
 	Edges []*Edge
-	Channel chan string
+	Channel chan Message
 	RoutingTable map[string]map[string]string
 }
 
