@@ -21,10 +21,15 @@ type Edge struct {
 	Weight int
 }
 
-type Message struct { 
-	Source *Node
+type Message struct {
+	Source      *Node
 	Destination *Node
-	Content string
+	Content     string
+}
+
+func sendMessage(messageChan chan<- Message, source *Node, destination *Node, content string) {
+	message := Message{Source: source, Destination: destination, Content: content}
+	messageChan <- message
 }
 
 func Dijkstra(g *Graph, start *Node) (map[*Node]int, map[*Node]*Node) {
