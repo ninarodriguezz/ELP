@@ -12,6 +12,8 @@ type Graph struct {
 type Node struct {
 	Name  string
 	Edges []*Edge
+	Channel chan string
+	RoutingTable map[string]map[string]string
 }
 
 type Edge struct {
@@ -94,6 +96,20 @@ func minDist(unvisited map[*Node]struct{}, distances map[*Node]int) *Node {
 	return n
 }
 
+func sendMessage(messageChan chan<- Message, source *Node, destination *Node, content string) {
+	message := Message{Source: source, Destination: destination, Content: content}
+	messageChan <- message
+}
+
+func processMessages(messageChan <-chan Message) {
+	for {
+		select {
+		case message := <-messageChan:
+			fmt.Printf("Node %s sent message '%s' to Node %s\n", message.Source.Name, message.Content, message.Destination.Name)
+		}
+	}
+}
+
 func creation_graph() Graph {
 
 	nodeA := &Node{Name: "A"}
@@ -126,7 +142,6 @@ func creation_graph() Graph {
 func main() {
 
 	graph := creation_graph()
-
 	var wg sync.WaitGroup
 	// results := make(map[string]map[string]map[string]string, len(graph.Nodes))
 	results := make(map[string]map[string]map[string]string)
@@ -154,5 +169,4 @@ func main() {
 			fmt.Print(start.Name, " -> ", dest, " : ", route["next_hop"], " -- ", route["distance"], "\n")
 		}
 	}
-
 }
