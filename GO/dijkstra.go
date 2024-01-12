@@ -26,11 +26,7 @@ func Dijkstra(g *Graph, start *Node) (map[*Node]int, map[*Node]*Node) {
 	for _, node := range g.Nodes {
 		if node == start {
 			distances[node] = 0
-<<<<<<< HEAD
-			next_hop[node]= node
-=======
 			next_hop[node] = node
->>>>>>> 3c2ac86ca3fa2a2bc76ed54ea429737bbb7db717
 		} else {
 			distances[node] = 1<<31 - 1
 		}
