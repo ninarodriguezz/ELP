@@ -95,6 +95,7 @@ func main() {
 
 	distances, next_hop := Dijkstra(&graph, nodeA)
 	fmt.Print(distances, next_hop)
+	fmt.Print("*****")
 
 	var wg sync.WaitGroup
 	// results := make(map[string]map[string]map[string]string, len(graph.Nodes))
