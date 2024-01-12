@@ -19,6 +19,12 @@ type Edge struct {
 	Weight int
 }
 
+type Message struct { 
+	Source *Node
+	Destination *Node
+	Content string
+}
+
 func Dijkstra(g *Graph, start *Node) (map[*Node]int, map[*Node]*Node) {
 	unvisited := make(map[*Node]struct{})
 	distances := make(map[*Node]int)
