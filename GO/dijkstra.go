@@ -19,9 +19,10 @@ type Edge struct {
 	Weight int
 }
 
-func Dijkstra(g *Graph, start *Node) map[*Node]int {
+func Dijkstra(g *Graph, start *Node) (map[*Node]int, map[*Node]*Node) {
 	unvisited := make(map[*Node]struct{})
 	distances := make(map[*Node]int)
+	next_hop := make(map[*Node]*Node)
 	for _, node := range g.Nodes {
 		if node == start {
 			distances[node] = 0
@@ -42,10 +43,15 @@ func Dijkstra(g *Graph, start *Node) map[*Node]int {
 			alt := distances[u] + e.Weight
 			if alt < distances[v] {
 				distances[v] = alt
+				if u == start {
+					next_hop[v] = v
+				} else {
+					next_hop[v] = next_hop[u]
+				}
 			}
 		}
 	}
-	return distances
+	return distances, next_hop
 }
 
 func minDist(unvisited map[*Node]struct{}, distances map[*Node]int) *Node {
@@ -85,26 +91,31 @@ func main() {
 	}
 	*/
 
+	distances, next_hop := Dijkstra(&graph, nodeA)
+	fmt.Print(distances, next_hop)
+
 	var wg sync.WaitGroup
-	results := make([]map[string]int, len(graph.Nodes))
-	print(results)
-	for i, start := range graph.Nodes {
+	results := make(map[string]map[string]map[string]string, len(graph.Nodes))
+	// print(results)
+	for _, start := range graph.Nodes {
 		wg.Add(1)
-		go func(i int, start *Node) {
+		go func(start *Node) {
 			defer wg.Done()
-			distances := Dijkstra(&graph, start)
-			results[i] = make(map[string]int)
+			distances, next_hop := Dijkstra(&graph, start)
+			// fmt.Print("next_hop :", next_hop, "\n")
+			results[start.Name] = make(map[string]map[string]string)
 			for node, dist := range distances {
-				results[i][node.Name] = dist
+				results[start.Name][node.Name]["next_hop"] = (next_hop[node]).Name
+				results[start.Name][node.Name]["distance"] = fmt.Sprint(dist)
 			}
-		}(i, start)
+		}(start)
 	}
 	wg.Wait()
 
-	for i, start := range graph.Nodes {
-		fmt.Println("Distancias más cortas desde el nodo", start.Name)
-		for name, dist := range results[i] {
-			fmt.Printf("%s -> %s: %d\n", start.Name, name, dist)
+	for _, start := range graph.Nodes {
+		fmt.Println("Distances les plus courtes du noeud", start.Name)
+		for dest, route := range results[start.Name] {
+			fmt.Print(start.Name, "->", dest, " : ", route["next_hop"], " -- ", route["distance"])
 		}
 	}
 }
