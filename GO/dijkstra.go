@@ -119,7 +119,7 @@ func main() {
 	for _, start := range graph.Nodes {
 		fmt.Println("\nDistances les plus courtes du noeud", start.Name)
 		for dest, route := range results[start.Name] {
-			fmt.Print(start.Name, " -> ", dest, " : ", route["next_hop"], " -- ", route["distance"])
+			fmt.Print(start.Name, " -> ", dest, " : ", route["next_hop"], " -- ", route["distance"], "\n")
 		}
 	}
 }
