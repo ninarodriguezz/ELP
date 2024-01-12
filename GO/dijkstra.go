@@ -67,7 +67,7 @@ func minDist(unvisited map[*Node]struct{}, distances map[*Node]int) *Node {
 	return n
 }
 
-func main() {
+func creation_graph() Graph {
 
 	nodeA := &Node{Name: "A"}
 	nodeB := &Node{Name: "B"}
@@ -85,6 +85,7 @@ func main() {
 	nodeG.Edges = []*Edge{{To: nodeB, Weight: 2}, {To: nodeD, Weight: 5}, {To: nodeF, Weight: 3}}
 	graph := Graph{Nodes: []*Node{nodeA, nodeB, nodeC, nodeD, nodeE, nodeF, nodeG}}
 
+	return graph
 	// nodeA := &Node{Name: "A"}
 	// nodeB := &Node{Name: "B"}
 	// nodeC := &Node{Name: "C"}
@@ -93,9 +94,11 @@ func main() {
 	// nodeC.Edges = []*Edge{{To: nodeA, Weight: 4}, {To: nodeB, Weight: 2}}
 	// graph := Graph{Nodes: []*Node{nodeA, nodeB, nodeC}}
 
-	distances, next_hop := Dijkstra(&graph, nodeA)
-	fmt.Print(distances, next_hop)
-	fmt.Print("*****")
+}
+
+func main() {
+
+	graph := creation_graph()
 
 	var wg sync.WaitGroup
 	// results := make(map[string]map[string]map[string]string, len(graph.Nodes))
