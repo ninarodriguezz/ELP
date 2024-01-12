@@ -26,7 +26,11 @@ func Dijkstra(g *Graph, start *Node) (map[*Node]int, map[*Node]*Node) {
 	for _, node := range g.Nodes {
 		if node == start {
 			distances[node] = 0
+<<<<<<< HEAD
 			next_hop[node]= node
+=======
+			next_hop[node] = node
+>>>>>>> 3c2ac86ca3fa2a2bc76ed54ea429737bbb7db717
 		} else {
 			distances[node] = 1<<31 - 1
 		}
@@ -97,7 +101,8 @@ func main() {
 	fmt.Print("*****")
 
 	var wg sync.WaitGroup
-	results := make(map[string]map[string]map[string]string, len(graph.Nodes))
+	// results := make(map[string]map[string]map[string]string, len(graph.Nodes))
+	results := make(map[string]map[string]map[string]string)
 	// print(results)
 	for _, start := range graph.Nodes {
 		wg.Add(1)
@@ -107,6 +112,7 @@ func main() {
 			// fmt.Print("next_hop :", next_hop, "\n")
 			results[start.Name] = make(map[string]map[string]string)
 			for node, dist := range distances {
+				results[start.Name][node.Name] = make(map[string]string)
 				results[start.Name][node.Name]["next_hop"] = (next_hop[node]).Name
 				results[start.Name][node.Name]["distance"] = fmt.Sprint(dist)
 			}
@@ -115,9 +121,9 @@ func main() {
 	wg.Wait()
 
 	for _, start := range graph.Nodes {
-		fmt.Println("Distances les plus courtes du noeud", start.Name)
+		fmt.Println("\nDistances les plus courtes du noeud", start.Name)
 		for dest, route := range results[start.Name] {
-			fmt.Print(start.Name, "->", dest, " : ", route["next_hop"], " -- ", route["distance"])
+			fmt.Print(start.Name, " -> ", dest, " : ", route["next_hop"], " -- ", route["distance"])
 		}
 	}
 }
