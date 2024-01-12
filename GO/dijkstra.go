@@ -68,29 +68,30 @@ func minDist(unvisited map[*Node]struct{}, distances map[*Node]int) *Node {
 }
 
 func main() {
+
 	nodeA := &Node{Name: "A"}
 	nodeB := &Node{Name: "B"}
 	nodeC := &Node{Name: "C"}
-	nodeA.Edges = []*Edge{{To: nodeB, Weight: 1}, {To: nodeC, Weight: 4}}
-	nodeB.Edges = []*Edge{{To: nodeA, Weight: 1}, {To: nodeC, Weight: 2}}
-	nodeC.Edges = []*Edge{{To: nodeA, Weight: 4}, {To: nodeB, Weight: 2}}
-	graph := Graph{Nodes: []*Node{nodeA, nodeB, nodeC}}
+	nodeD := &Node{Name: "D"}
+	nodeE := &Node{Name: "E"}
+	nodeF := &Node{Name: "F"}
+	nodeG := &Node{Name: "G"}
+	nodeA.Edges = []*Edge{{To: nodeB, Weight: 1}, {To: nodeC, Weight: 4}, {To: nodeD, Weight: 8}}
+	nodeB.Edges = []*Edge{{To: nodeA, Weight: 1}, {To: nodeD, Weight: 2}, {To: nodeG, Weight: 2}}
+	nodeC.Edges = []*Edge{{To: nodeA, Weight: 4}, {To: nodeF, Weight: 6}}
+	nodeD.Edges = []*Edge{{To: nodeA, Weight: 8}, {To: nodeB, Weight: 2}, {To: nodeE, Weight: 10}, {To: nodeG, Weight: 5}}
+	nodeE.Edges = []*Edge{{To: nodeD, Weight: 10}, {To: nodeF, Weight: 7}}
+	nodeF.Edges = []*Edge{{To: nodeC, Weight: 6}, {To: nodeE, Weight: 7}, {To: nodeG, Weight: 3}}
+	nodeG.Edges = []*Edge{{To: nodeB, Weight: 2}, {To: nodeD, Weight: 5}, {To: nodeF, Weight: 3}}
+	graph := Graph{Nodes: []*Node{nodeA, nodeB, nodeC, nodeD, nodeE, nodeF, nodeG}}
 
-	/*    var wg sync.WaitGroup
-	    for _, start := range graph.Nodes {
-	        wg.Add(1)
-	        go func(start *Node) {
-	            defer wg.Done()
-	            Dijkstra(&graph, start)
-	            fmt.Println("Distancias más cortas desde el nodo", start.Name)
-	            for _, node := range graph.Nodes {
-	                fmt.Printf("%s -> %s: %d\n", start.Name, node.Name, node.Dist)
-	            }
-	        }(start)
-	    }
-	    wg.Wait()
-	}
-	*/
+	// nodeA := &Node{Name: "A"}
+	// nodeB := &Node{Name: "B"}
+	// nodeC := &Node{Name: "C"}
+	// nodeA.Edges = []*Edge{{To: nodeB, Weight: 1}, {To: nodeC, Weight: 4}}
+	// nodeB.Edges = []*Edge{{To: nodeA, Weight: 1}, {To: nodeC, Weight: 2}}
+	// nodeC.Edges = []*Edge{{To: nodeA, Weight: 4}, {To: nodeB, Weight: 2}}
+	// graph := Graph{Nodes: []*Node{nodeA, nodeB, nodeC}}
 
 	distances, next_hop := Dijkstra(&graph, nodeA)
 	fmt.Print(distances, next_hop)
