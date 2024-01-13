@@ -2,8 +2,11 @@ package main
 
 import (
 	"fmt"
+	"math/rand"
 	"sync"
+	"time"
 )
+
 
 type Graph struct {
 	Nodes []*Node
@@ -27,6 +30,46 @@ type Message struct {
 	Content     string
 }
 
+//definition constantes du graphe
+const (
+	numNodes = 20 			//taille du graphe 
+	minEdgesPerNode = 2		
+	maxEdgesPerNode = 5
+	weightRange     = 20	//poids max des connections
+)
+
+//****		FONCTION CRÉATION GRAPHE ALÉATOIRE ****//
+func creation_graph() Graph {
+
+	nodeA := &Node{Name: "A"}
+	nodeB := &Node{Name: "B"}
+	nodeC := &Node{Name: "C"}
+	nodeD := &Node{Name: "D"}
+	nodeE := &Node{Name: "E"}
+	nodeF := &Node{Name: "F"}
+	nodeG := &Node{Name: "G"}
+	nodeA.Edges = []*Edge{{To: nodeB, Weight: 1}, {To: nodeC, Weight: 4}, {To: nodeD, Weight: 8}}
+	nodeB.Edges = []*Edge{{To: nodeA, Weight: 1}, {To: nodeD, Weight: 2}, {To: nodeG, Weight: 2}}
+	nodeC.Edges = []*Edge{{To: nodeA, Weight: 4}, {To: nodeF, Weight: 6}}
+	nodeD.Edges = []*Edge{{To: nodeA, Weight: 8}, {To: nodeB, Weight: 2}, {To: nodeE, Weight: 10}, {To: nodeG, Weight: 5}}
+	nodeE.Edges = []*Edge{{To: nodeD, Weight: 10}, {To: nodeF, Weight: 7}}
+	nodeF.Edges = []*Edge{{To: nodeC, Weight: 6}, {To: nodeE, Weight: 7}, {To: nodeG, Weight: 3}}
+	nodeG.Edges = []*Edge{{To: nodeB, Weight: 2}, {To: nodeD, Weight: 5}, {To: nodeF, Weight: 3}}
+	graph := Graph{Nodes: []*Node{nodeA, nodeB, nodeC, nodeD, nodeE, nodeF, nodeG}}
+
+	return graph
+	// nodeA := &Node{Name: "A"}
+	// nodeB := &Node{Name: "B"}
+	// nodeC := &Node{Name: "C"}
+	// nodeA.Edges = []*Edge{{To: nodeB, Weight: 1}, {To: nodeC, Weight: 4}}
+	// nodeB.Edges = []*Edge{{To: nodeA, Weight: 1}, {To: nodeC, Weight: 2}}
+	// nodeC.Edges = []*Edge{{To: nodeA, Weight: 4}, {To: nodeB, Weight: 2}}
+	// graph := Graph{Nodes: []*Node{nodeA, nodeB, nodeC}}
+
+}
+
+//****	FONCTIONS TRANSMITION DE MESSAGES	****//
+
 func sendMessage(messageChan chan Message, messageEnvoye Message) {
 	messageChan <- messageEnvoye
 }
@@ -35,6 +78,15 @@ func hello(nodeSrc *Node, nodeDst *Node) {
 	channel := nodeSrc.Channel
 	helloMessage := Message{Source: nodeSrc, Destination: nodeDst, Content: "Hello"}
 	sendMessage(channel, helloMessage)
+}
+
+func processMessages(messageChan <-chan Message) {
+	for {
+		select {
+		case message := <-messageChan:
+			fmt.Printf("Node %s sent message '%s' to Node %s\n", message.Source.Name, message.Content, message.Destination.Name)
+		}
+	}
 }
 
 func routing(node *Node) {
@@ -52,6 +104,8 @@ func routing(node *Node) {
 
 }
 
+
+//**** 		FONCTIONS CONSTRUCTION TABLES DE ROUTAGE		****//
 func Dijkstra(g *Graph, start *Node) (map[*Node]int, map[*Node]*Node) {
 	unvisited := make(map[*Node]struct{})
 	distances := make(map[*Node]int)
@@ -100,43 +154,7 @@ func minDist(unvisited map[*Node]struct{}, distances map[*Node]int) *Node {
 	return n
 }
 
-func processMessages(messageChan <-chan Message) {
-	for {
-		select {
-		case message := <-messageChan:
-			fmt.Printf("Node %s sent message '%s' to Node %s\n", message.Source.Name, message.Content, message.Destination.Name)
-		}
-	}
-}
-
-func creation_graph() Graph {
-
-	nodeA := &Node{Name: "A"}
-	nodeB := &Node{Name: "B"}
-	nodeC := &Node{Name: "C"}
-	nodeD := &Node{Name: "D"}
-	nodeE := &Node{Name: "E"}
-	nodeF := &Node{Name: "F"}
-	nodeG := &Node{Name: "G"}
-	nodeA.Edges = []*Edge{{To: nodeB, Weight: 1}, {To: nodeC, Weight: 4}, {To: nodeD, Weight: 8}}
-	nodeB.Edges = []*Edge{{To: nodeA, Weight: 1}, {To: nodeD, Weight: 2}, {To: nodeG, Weight: 2}}
-	nodeC.Edges = []*Edge{{To: nodeA, Weight: 4}, {To: nodeF, Weight: 6}}
-	nodeD.Edges = []*Edge{{To: nodeA, Weight: 8}, {To: nodeB, Weight: 2}, {To: nodeE, Weight: 10}, {To: nodeG, Weight: 5}}
-	nodeE.Edges = []*Edge{{To: nodeD, Weight: 10}, {To: nodeF, Weight: 7}}
-	nodeF.Edges = []*Edge{{To: nodeC, Weight: 6}, {To: nodeE, Weight: 7}, {To: nodeG, Weight: 3}}
-	nodeG.Edges = []*Edge{{To: nodeB, Weight: 2}, {To: nodeD, Weight: 5}, {To: nodeF, Weight: 3}}
-	graph := Graph{Nodes: []*Node{nodeA, nodeB, nodeC, nodeD, nodeE, nodeF, nodeG}}
-
-	return graph
-	// nodeA := &Node{Name: "A"}
-	// nodeB := &Node{Name: "B"}
-	// nodeC := &Node{Name: "C"}
-	// nodeA.Edges = []*Edge{{To: nodeB, Weight: 1}, {To: nodeC, Weight: 4}}
-	// nodeB.Edges = []*Edge{{To: nodeA, Weight: 1}, {To: nodeC, Weight: 2}}
-	// nodeC.Edges = []*Edge{{To: nodeA, Weight: 4}, {To: nodeB, Weight: 2}}
-	// graph := Graph{Nodes: []*Node{nodeA, nodeB, nodeC}}
-
-}
+//**** 		FONCTION MAIN		 ****//
 
 func main() {
 
