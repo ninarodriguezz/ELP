@@ -117,7 +117,7 @@ func processMessages(g *Graph, node *Node) {  //je rajoute graph pour appeler la
 			case "Hello":
 				//On fait qqch si on reçoit "Hello"?? On envoie un autre message?  
 			case "link no longer available":
-				//removeLinkAndRecalculate(g, message.LinkDetails) //fonction qui va enlever le lien et recalculer la routing table de tous les routeurs
+				removeLinkAndRecalculate(g, message.LinkDetails) //fonction qui va enlever le lien et recalculer la routing table de tous les routeurs
 			case "new link available":
 				//addLinkAndRecalculate(g, message.LinkDetails)
 			default:
@@ -142,7 +142,7 @@ func routing(node *Node) {
 
 }
 
-/* func removeLinkAndRecalculate(g *Graph, linkinfo LinkInfo) {
+func removeLinkAndRecalculate(g *Graph, linkinfo LinkInfo) {
 	nodeA := linkinfo.NodeA
 	nodeB := linkinfo.NodeB
 	for i, edge := range nodeA.Edges {
@@ -159,7 +159,7 @@ func routing(node *Node) {
 		}
 	}
 	constructRoutingTables(g) 
-} */
+}
 
 /*func addLinkAndRecalculate (g *Graph, linkinfo LinkInfo) {
 	nodeA := linkinfo.NodeA
@@ -259,8 +259,8 @@ func minDist(unvisited map[*Node]struct{}, distances map[*Node]int) *Node {
 }
 
 
-//**** 		FONCTION MAIN		 ****/
-/*
+//**** 		FONCTION MAIN		 ****//
+
 func main() {
 	start := time.Now()
     graph := initRandomGraph(2000)
@@ -280,8 +280,7 @@ func main() {
 
  */
 
-const numWorkers = 20
-var waitGroup sync.WaitGroup
+ const numWorkers = 10
 
 func main() {
     start := time.Now()
@@ -292,7 +291,7 @@ func main() {
 
     // Iniciar goroutines para construir tablas de enrutamiento
     for i := 0; i < numWorkers; i++ {
-        go constructRoutingTablesWorker(jobs, &graph)
+        go constructRoutingTablesWorker(jobs, graph)
     }
 
     // Asignar trabajos a las goroutines
@@ -323,3 +322,4 @@ func constructRoutingTables(graph *Graph, start *Node) {
         start.RoutingTable[destNode.Name]["next_hop"] = nextHop[destNode]
     }
 }
+
