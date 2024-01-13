@@ -32,8 +32,8 @@ type Message struct {
 
 //definition constantes du graphe
 const ( 
-	minEdgesPerNode = 2		//au moins deux pour s'assurer qu'un node n'est pas isolé, probabilité de configuration de trois noeuds en triangle negligé :P 
-	maxEdgesPerNode = 5
+	minEdgesPerNode = 1		//au moins deux pour s'assurer qu'un node n'est pas isolé, probabilité de configuration de trois noeuds en triangle negligé :P 
+	maxEdgesPerNode = 2
 	weightRange     = 20	//poids max des connections
 )
 
@@ -43,10 +43,10 @@ func initRandomGraph(nodesCount int) Graph {
 	//permet d'obtenir une séquence aléatoire differente à chaque execution du code, 
 	//on se base sur le temps qui est un parametre que change constantement 
 
-	// On appele les nodes A + num comme ça il y a pas de confusion avec les poids et on a inf possibilités
+	// On appele les nodes R + num comme ça il y a pas de confusion avec les poids et on a inf possibilités
 	nodes := make([]*Node, nodesCount)
 	for i := 0; i < nodesCount; i++ {
-		nodes[i] = &Node{Name: fmt.Sprintf("A%d", i+1)}
+		nodes[i] = &Node{Name: fmt.Sprintf("R%d", i+1)}
 	}
 
 	// Crear conexiones aleatorias entre nodos
@@ -175,7 +175,8 @@ func minDist(unvisited map[*Node]struct{}, distances map[*Node]int) *Node {
 
 func main() {
 
-	graph := createRandomGraph(100) //en parametre on met le nombre de sommets
+	graph := initRandomGraph(4) //en parametre on met le nombre de sommets
+	fmt.Printf("Graphe créé")
 	var wg sync.WaitGroup
 	// results := make(map[string]map[string]map[string]string, len(graph.Nodes))
 	results := make(map[string]map[string]map[string]*Node)
