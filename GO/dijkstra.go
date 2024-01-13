@@ -31,42 +31,59 @@ type Message struct {
 }
 
 //definition constantes du graphe
-const (
-	numNodes = 20 			//taille du graphe 
-	minEdgesPerNode = 2		
+const ( 
+	minEdgesPerNode = 2		//au moins deux pour s'assurer qu'un node n'est pas isolé, probabilité de configuration de trois noeuds en triangle negligé :P 
 	maxEdgesPerNode = 5
 	weightRange     = 20	//poids max des connections
 )
 
 //****		FONCTION CRÉATION GRAPHE ALÉATOIRE ****//
-func creation_graph() Graph {
+func initRandomGraph(nodesCount int) Graph {
+	rand.Seed(time.Now().UnixNano())			
+	//permet d'obtenir une séquence aléatoire differente à chaque execution du code, 
+	//on se base sur le temps qui est un parametre que change constantement 
 
-	nodeA := &Node{Name: "A"}
-	nodeB := &Node{Name: "B"}
-	nodeC := &Node{Name: "C"}
-	nodeD := &Node{Name: "D"}
-	nodeE := &Node{Name: "E"}
-	nodeF := &Node{Name: "F"}
-	nodeG := &Node{Name: "G"}
-	nodeA.Edges = []*Edge{{To: nodeB, Weight: 1}, {To: nodeC, Weight: 4}, {To: nodeD, Weight: 8}}
-	nodeB.Edges = []*Edge{{To: nodeA, Weight: 1}, {To: nodeD, Weight: 2}, {To: nodeG, Weight: 2}}
-	nodeC.Edges = []*Edge{{To: nodeA, Weight: 4}, {To: nodeF, Weight: 6}}
-	nodeD.Edges = []*Edge{{To: nodeA, Weight: 8}, {To: nodeB, Weight: 2}, {To: nodeE, Weight: 10}, {To: nodeG, Weight: 5}}
-	nodeE.Edges = []*Edge{{To: nodeD, Weight: 10}, {To: nodeF, Weight: 7}}
-	nodeF.Edges = []*Edge{{To: nodeC, Weight: 6}, {To: nodeE, Weight: 7}, {To: nodeG, Weight: 3}}
-	nodeG.Edges = []*Edge{{To: nodeB, Weight: 2}, {To: nodeD, Weight: 5}, {To: nodeF, Weight: 3}}
-	graph := Graph{Nodes: []*Node{nodeA, nodeB, nodeC, nodeD, nodeE, nodeF, nodeG}}
+	// On appele les nodes A + num comme ça il y a pas de confusion avec les poids et on a inf possibilités
+	nodes := make([]*Node, nodesCount)
+	for i := 0; i < nodesCount; i++ {
+		nodes[i] = &Node{Name: fmt.Sprintf("A%d", i+1)}
+	}
 
-	return graph
-	// nodeA := &Node{Name: "A"}
-	// nodeB := &Node{Name: "B"}
-	// nodeC := &Node{Name: "C"}
-	// nodeA.Edges = []*Edge{{To: nodeB, Weight: 1}, {To: nodeC, Weight: 4}}
-	// nodeB.Edges = []*Edge{{To: nodeA, Weight: 1}, {To: nodeC, Weight: 2}}
-	// nodeC.Edges = []*Edge{{To: nodeA, Weight: 4}, {To: nodeB, Weight: 2}}
-	// graph := Graph{Nodes: []*Node{nodeA, nodeB, nodeC}}
+	// Crear conexiones aleatorias entre nodos
+	for _, node := range nodes {
+		// Determiner aléatoriamente la quantité d'Edges que le node aura (n entre minEdgesPerNode et maxEdgesPerNode)
+		edgesCount := rand.Intn(maxEdgesPerNode-minEdgesPerNode+1) + minEdgesPerNode
 
+		// Crear edges
+		for j := 0; j < edgesCount; j++ {
+			// Choisir un node aléatoire
+			otherNode := nodes[rand.Intn(nodesCount)]
+
+			// Evitar conexión consigo mismo y duplicados
+			for node == otherNode || edgeExists(node, otherNode) {
+				otherNode = nodes[rand.Intn(nodesCount)]
+			}
+
+			// Crear bidireccionalidad
+			edge := &Edge{To: otherNode, Weight: rand.Intn(weightRange)}
+			node.Edges = append(node.Edges, edge)
+			otherNode.Edges = append(otherNode.Edges, &Edge{To: node, Weight: edge.Weight})
+		}
+	}
+
+	return Graph{Nodes: nodes}
 }
+
+// Verificar si ya existe un edge entre dos nodos
+func edgeExists(nodeA, nodeB *Node) bool {
+	for _, edge := range nodeA.Edges {
+		if edge.To == nodeB {
+			return true
+		}
+	}
+	return false
+}
+
 
 //****	FONCTIONS TRANSMITION DE MESSAGES	****//
 
@@ -158,7 +175,7 @@ func minDist(unvisited map[*Node]struct{}, distances map[*Node]int) *Node {
 
 func main() {
 
-	graph := creation_graph()
+	graph := createRandomGraph(100) //en parametre on met le nombre de sommets
 	var wg sync.WaitGroup
 	// results := make(map[string]map[string]map[string]string, len(graph.Nodes))
 	results := make(map[string]map[string]map[string]*Node)
