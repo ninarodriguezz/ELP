@@ -59,12 +59,11 @@ func initRandomGraph(nodesCount int) Graph {
 		nodes[i] = &Node{Name: fmt.Sprintf("R%d", i+1)}
 	}
 
-	// Crear conexiones aleatorias entre nodos
+	// Creation liens aléatoirement 
 	for _, node := range nodes {
 		// Determiner aléatoriamente la quantité d'Edges que le node aura (n entre minEdgesPerNode et maxEdgesPerNode)
 		edgesCount := rand.Intn(maxEdgesPerNode-minEdgesPerNode+1) + minEdgesPerNode
 
-		// Crear edges
 		for j := 0; j < edgesCount; j++ {
 			// Choisir un node aléatoire
 			otherNode := nodes[rand.Intn(nodesCount)]
@@ -97,7 +96,7 @@ func edgeExists(nodeA, nodeB *Node) bool {
 
 //****	FONCTIONS TRANSMITION DE MESSAGES	****//
 
-/* func sendMessage(messageChan chan Message, messageEnvoye Message) {
+func sendMessage(messageChan chan Message, messageEnvoye Message) {
 	messageChan <- messageEnvoye
 }
 
@@ -118,11 +117,10 @@ func processMessages(g *Graph, node *Node) {  //je rajoute graph pour appeler la
 			case "Hello":
 				//On fait qqch si on reçoit "Hello"?? On envoie un autre message?  
 			case "link no longer available":
-				removeLinkAndRecalculate(g, message.LinkDetails) //fonction qui va enlever le lien et recalculer la routing table de tous les routeurs
+				//removeLinkAndRecalculate(g, message.LinkDetails) //fonction qui va enlever le lien et recalculer la routing table de tous les routeurs
 			case "new link available":
-				// addLinkAndRecalculate(g, message.LinkInfo)
+				//addLinkAndRecalculate(g, message.LinkDetails)
 			default:
-				// Lógica por defecto o manejo de otros tipos de mensajes
 				fmt.Printf("Message de type inconnu: %s\n", message.Content)
 			}
 		}
@@ -144,9 +142,9 @@ func routing(node *Node) {
 
 }
 
-func removeLinkAndRecalculate(g *Graph, linkinfo LinkInfo) {
-	nodeA = linkinfo.NodeA
-	nodeB = linkinfo.NodeB
+/* func removeLinkAndRecalculate(g *Graph, linkinfo LinkInfo) {
+	nodeA := linkinfo.NodeA
+	nodeB := linkinfo.NodeB
 	for i, edge := range nodeA.Edges {
         if edge.To == nodeB {
             // Eliminer le Edge de la liste de edges de A avec une technique de slicing 
@@ -160,10 +158,36 @@ func removeLinkAndRecalculate(g *Graph, linkinfo LinkInfo) {
 			break
 		}
 	}
-	// il manque l'appel à dijkstra paralellisé 
-}
- */
-//func 
+	constructRoutingTables(g) 
+} */
+
+/*func addLinkAndRecalculate (g *Graph, linkinfo LinkInfo) {
+	nodeA := linkinfo.NodeA
+	nodeB := linkinfo.NodeB
+// j'ai besoin du poids pour créer le nouveau Edge, je le met dans la classe LinkInfo ou je fais comment? 
+
+ 	linkExists := false
+	for _, edge := range nodeA.Edges {
+		if edge.To == nodeB {
+			linkExists = true
+			break
+		}
+	} 
+	if !linkExists {
+		// Ajout Edge au node A 
+		edgeA := &Edge{To: nodeB, Weight: }
+		nodeA.Edges = append(nodeA.Edges, edgeA)
+
+		// Ajout Edge au node B
+		edgeB := &Edge{To: nodeA, Weight: }
+		nodeB.Edges = append(nodeB.Edges, edgeB)
+
+		// Recalcule RoutingTables
+		constructRoutingTables(g)
+	} else {
+		fmt.Println("Le lien existait déjà.")
+	} 
+}*/
 
 //**** 		FONCTIONS CONSTRUCTION TABLES DE ROUTAGE		****//
 func Dijkstra(g *Graph, start *Node) (map[*Node]int, map[*Node]*Node) {
@@ -214,7 +238,7 @@ func minDist(unvisited map[*Node]struct{}, distances map[*Node]int) *Node {
 	return n
 }
 
-func constructRoutingTables(g *Graph) {
+/* func constructRoutingTables(g *Graph) {
 	var wg sync.WaitGroup
 
 	for _, start := range g.Nodes {
@@ -235,19 +259,67 @@ func constructRoutingTables(g *Graph) {
 }
 
 
-//**** 		FONCTION MAIN		 ****//
-
+//**** 		FONCTION MAIN		 ****/
+/*
 func main() {
+	start := time.Now()
+    graph := initRandomGraph(2000)
+	fmt.Printf("Graphe créé en %v\n", time.Since(start))
+    constructRoutingTables(&graph)
+    fmt.Printf("Tables de routage créés en %v\n", time.Since(start))
 
-	graph := initRandomGraph(15) //en parametre on met le nombre de sommets
-	constructRoutingTables(&graph)
-
-	// Affichage table de routage pour chaque noeud
+/* 	// Affichage table de routage pour chaque noeud
 	for _, start := range graph.Nodes {
 		fmt.Println("\nDistances les plus courtes du noeud", start.Name)
 		for dest, route := range start.RoutingTable {
 			fmt.Print(start.Name, " -> ", dest, " : ", route["next_hop"].Name, "\n")
 		}
 	}
-	
+	 
+}
+
+ */
+
+const numWorkers = 20
+var waitGroup sync.WaitGroup
+
+func main() {
+    start := time.Now()
+    graph := initRandomGraph(2000)
+
+    // Crear un canal para asignar trabajos a goroutines
+    jobs := make(chan *Node, len(graph.Nodes))
+
+    // Iniciar goroutines para construir tablas de enrutamiento
+    for i := 0; i < numWorkers; i++ {
+        go constructRoutingTablesWorker(jobs, &graph)
+    }
+
+    // Asignar trabajos a las goroutines
+    for _, node := range graph.Nodes {
+        jobs <- node
+    }
+    close(jobs)
+
+    // Esperar a que todas las goroutines completen
+    waitGroup.Wait()
+
+    fmt.Printf("Tables de routage créés en %v\n", time.Since(start))
+}
+
+func constructRoutingTablesWorker(jobs <-chan *Node, graph *Graph) {
+    for node := range jobs {
+        constructRoutingTables(graph, node)
+        waitGroup.Done()
+    }
+}
+
+func constructRoutingTables(graph *Graph, start *Node) {
+    distances, nextHop := Dijkstra(graph, start)
+
+    start.RoutingTable = make(map[string]map[string]*Node)
+    for destNode := range distances {
+        start.RoutingTable[destNode.Name] = make(map[string]*Node)
+        start.RoutingTable[destNode.Name]["next_hop"] = nextHop[destNode]
+    }
 }
