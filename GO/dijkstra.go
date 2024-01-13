@@ -8,33 +8,43 @@ import (
 )
 
 
+// Structure définissant un graphe
 type Graph struct {
 	Nodes []*Node
 }
 
+// Structure définissant un nœud dans le graphe
 type Node struct {
 	Name         string
 	Edges        []*Edge
 	Channel      chan Message
-	RoutingTable map[string]map[string]*Node
+	RoutingTable map[string]map[string]*Node  //Table de routage de chaque node qui contient tous les autres sommets avec le next_hop (sans distance)
 }
 
+// Structure définissant une arête reliant deux nœuds
 type Edge struct {
 	To     *Node
 	Weight int
 }
 
+// Structure définissant un message envoyé entre nœuds
 type Message struct {
 	Source      *Node
 	Destination *Node
 	Content     string
+	LinkDetails LinkInfo 		//info contenue dans les messages pour informer qu'on a perdu ou établi un nouveau lien 
 }
 
-//definition constantes du graphe
+type LinkInfo struct {
+	NodeA *Node
+	NodeB *Node 				//nodes qui ont perdu ou récuperé un lien 
+}
+
+//definition caracteristiques du graphe
 const ( 
-	minEdgesPerNode = 1		//au moins deux pour s'assurer qu'un node n'est pas isolé, probabilité de configuration de trois noeuds en triangle negligé :P 
-	maxEdgesPerNode = 2
-	weightRange     = 20	//poids max des connections
+	minEdgesPerNode = 2		//au moins deux pour s'assurer qu'un node n'est pas isolé, probabilité de configuration de trois noeuds en triangle negligé :P 
+	maxEdgesPerNode = 5
+	weightRange     = 20	//poids max des edges
 )
 
 //****		FONCTION CRÉATION GRAPHE ALÉATOIRE ****//
@@ -59,12 +69,12 @@ func initRandomGraph(nodesCount int) Graph {
 			// Choisir un node aléatoire
 			otherNode := nodes[rand.Intn(nodesCount)]
 
-			// Evitar conexión consigo mismo y duplicados
+			// Tester si le lien existe déjà et éviter un lien avec lui-même 
 			for node == otherNode || edgeExists(node, otherNode) {
 				otherNode = nodes[rand.Intn(nodesCount)]
 			}
 
-			// Crear bidireccionalidad
+			// Creer le lien dans les deux sens
 			edge := &Edge{To: otherNode, Weight: rand.Intn(weightRange)}
 			node.Edges = append(node.Edges, edge)
 			otherNode.Edges = append(otherNode.Edges, &Edge{To: node, Weight: edge.Weight})
@@ -74,7 +84,7 @@ func initRandomGraph(nodesCount int) Graph {
 	return Graph{Nodes: nodes}
 }
 
-// Verificar si ya existe un edge entre dos nodos
+// Fct qui verifie si le lien existe déjà
 func edgeExists(nodeA, nodeB *Node) bool {
 	for _, edge := range nodeA.Edges {
 		if edge.To == nodeB {
@@ -87,7 +97,7 @@ func edgeExists(nodeA, nodeB *Node) bool {
 
 //****	FONCTIONS TRANSMITION DE MESSAGES	****//
 
-func sendMessage(messageChan chan Message, messageEnvoye Message) {
+/* func sendMessage(messageChan chan Message, messageEnvoye Message) {
 	messageChan <- messageEnvoye
 }
 
@@ -97,11 +107,24 @@ func hello(nodeSrc *Node, nodeDst *Node) {
 	sendMessage(channel, helloMessage)
 }
 
-func processMessages(messageChan <-chan Message) {
+func processMessages(g *Graph, node *Node) {  //je rajoute graph pour appeler la fct qui recalcule dijkstra
 	for {
 		select {
-		case message := <-messageChan:
-			fmt.Printf("Node %s sent message '%s' to Node %s\n", message.Source.Name, message.Content, message.Destination.Name)
+		case message := <-node.Channel:
+			fmt.Printf("Le nœud %s a reçu le message '%s' du nœud %s\n", message.Source.Name, message.Content, message.Destination.Name)
+
+			// Actions selon le message reçu
+			switch message.Content {
+			case "Hello":
+				//On fait qqch si on reçoit "Hello"?? On envoie un autre message?  
+			case "link no longer available":
+				removeLinkAndRecalculate(g, message.LinkDetails) //fonction qui va enlever le lien et recalculer la routing table de tous les routeurs
+			case "new link available":
+				// addLinkAndRecalculate(g, message.LinkInfo)
+			default:
+				// Lógica por defecto o manejo de otros tipos de mensajes
+				fmt.Printf("Message de type inconnu: %s\n", message.Content)
+			}
 		}
 	}
 }
@@ -121,6 +144,26 @@ func routing(node *Node) {
 
 }
 
+func removeLinkAndRecalculate(g *Graph, linkinfo LinkInfo) {
+	nodeA = linkinfo.NodeA
+	nodeB = linkinfo.NodeB
+	for i, edge := range nodeA.Edges {
+        if edge.To == nodeB {
+            // Eliminer le Edge de la liste de edges de A avec une technique de slicing 
+            nodeA.Edges = append(nodeA.Edges[:i], nodeA.Edges[i+1:]...)
+            break
+		}
+	}
+	for i, edge := range nodeB.Edges {
+		if edge.To == nodeA {
+			nodeB.Edges = append(nodeB.Edges[:i], nodeB.Edges[i+1:]...)
+			break
+		}
+	}
+	// il manque l'appel à dijkstra paralellisé 
+}
+ */
+//func 
 
 //**** 		FONCTIONS CONSTRUCTION TABLES DE ROUTAGE		****//
 func Dijkstra(g *Graph, start *Node) (map[*Node]int, map[*Node]*Node) {
@@ -171,37 +214,40 @@ func minDist(unvisited map[*Node]struct{}, distances map[*Node]int) *Node {
 	return n
 }
 
+func constructRoutingTables(g *Graph) {
+	var wg sync.WaitGroup
+
+	for _, start := range g.Nodes {
+		wg.Add(1)
+		go func(start *Node) {
+			defer wg.Done()
+			distances, nextHop := Dijkstra(g, start)
+
+			start.RoutingTable = make(map[string]map[string]*Node)
+			for node := range distances {
+				start.RoutingTable[node.Name] = make(map[string]*Node)
+				start.RoutingTable[node.Name]["next_hop"] = nextHop[node]
+			}
+		}(start)
+	}
+
+	wg.Wait()
+}
+
+
 //**** 		FONCTION MAIN		 ****//
 
 func main() {
 
-	graph := initRandomGraph(4) //en parametre on met le nombre de sommets
-	fmt.Printf("Graphe créé")
-	var wg sync.WaitGroup
-	// results := make(map[string]map[string]map[string]string, len(graph.Nodes))
-	results := make(map[string]map[string]map[string]*Node)
-	// print(results)
-	for _, start := range graph.Nodes {
-		wg.Add(1)
-		go func(start *Node) {
-			defer wg.Done()
-			distances, next_hop := Dijkstra(&graph, start)
-			// fmt.Print("next_hop :", next_hop, "\n")
-			results[start.Name] = make(map[string]map[string]*Node)
-			for node, _ := range distances {
-				results[start.Name][node.Name] = make(map[string]*Node)
-				results[start.Name][node.Name]["next_hop"] = (next_hop[node]) //.Name
-				// results[start.Name][node.Name]["distance"] = fmt.Sprint(dist)
-			}
-		}(start)
-	}
-	wg.Wait()
+	graph := initRandomGraph(15) //en parametre on met le nombre de sommets
+	constructRoutingTables(&graph)
 
 	// Affichage table de routage pour chaque noeud
 	for _, start := range graph.Nodes {
 		fmt.Println("\nDistances les plus courtes du noeud", start.Name)
-		for dest, route := range results[start.Name] {
-			fmt.Print(start.Name, " -> ", dest, " : ", route["next_hop"], " -- ", route["distance"], "\n")
+		for dest, route := range start.RoutingTable {
+			fmt.Print(start.Name, " -> ", dest, " : ", route["next_hop"].Name, "\n")
 		}
 	}
+	
 }
