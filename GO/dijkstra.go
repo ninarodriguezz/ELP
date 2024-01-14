@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	"sync"
 	"time"
+	"runtime"
 )
 
 
@@ -46,6 +47,9 @@ const (
 	maxEdgesPerNode = 5
 	weightRange     = 20	//poids max des edges
 )
+
+var numWorkers = runtime.NumCPU()
+var waitGroup sync.WaitGroup
 
 //****		FONCTION CRÉATION GRAPHE ALÉATOIRE ****//
 func initRandomGraph(nodesCount int) Graph {
@@ -119,7 +123,7 @@ func processMessages(g *Graph, node *Node) {  //je rajoute graph pour appeler la
 			case "link no longer available":
 				removeLinkAndRecalculate(g, message.LinkDetails) //fonction qui va enlever le lien et recalculer la routing table de tous les routeurs
 			case "new link available":
-				//addLinkAndRecalculate(g, message.LinkDetails)
+				addLinkAndRecalculate(g, message.LinkDetails)
 			default:
 				fmt.Printf("Message de type inconnu: %s\n", message.Content)
 			}
@@ -158,10 +162,10 @@ func removeLinkAndRecalculate(g *Graph, linkinfo LinkInfo) {
 			break
 		}
 	}
-	constructRoutingTables(g) 
+	constructAllRoutingTables(g)
 }
 
-/*func addLinkAndRecalculate (g *Graph, linkinfo LinkInfo) {
+func addLinkAndRecalculate (g *Graph, linkinfo LinkInfo) {
 	nodeA := linkinfo.NodeA
 	nodeB := linkinfo.NodeB
 // j'ai besoin du poids pour créer le nouveau Edge, je le met dans la classe LinkInfo ou je fais comment? 
@@ -175,22 +179,22 @@ func removeLinkAndRecalculate(g *Graph, linkinfo LinkInfo) {
 	} 
 	if !linkExists {
 		// Ajout Edge au node A 
-		edgeA := &Edge{To: nodeB, Weight: }
+		edgeA := &Edge{To: nodeB, Weight: 1}  //j'ai mis 1 par default mais il faudrait plutôt avoir le parametre
 		nodeA.Edges = append(nodeA.Edges, edgeA)
 
 		// Ajout Edge au node B
-		edgeB := &Edge{To: nodeA, Weight: }
+		edgeB := &Edge{To: nodeA, Weight: 1}
 		nodeB.Edges = append(nodeB.Edges, edgeB)
 
 		// Recalcule RoutingTables
-		constructRoutingTables(g)
+		constructAllRoutingTables(g)
 	} else {
 		fmt.Println("Le lien existait déjà.")
 	} 
-}*/
+}
 
 //**** 		FONCTIONS CONSTRUCTION TABLES DE ROUTAGE		****//
-func Dijkstra(g *Graph, start *Node) (map[*Node]int, map[*Node]*Node) {
+func Dijkstra(g *Graph, start *Node) {
 	unvisited := make(map[*Node]struct{})
 	distances := make(map[*Node]int)
 	next_hop := make(map[*Node]*Node)
@@ -223,7 +227,11 @@ func Dijkstra(g *Graph, start *Node) (map[*Node]int, map[*Node]*Node) {
 			}
 		}
 	}
-	return distances, next_hop
+	start.RoutingTable = make(map[string]map[string]*Node)
+    for destNode := range distances {
+        start.RoutingTable[destNode.Name] = make(map[string]*Node)
+        start.RoutingTable[destNode.Name]["next_hop"] = next_hop[destNode]
+    }
 }
 
 func minDist(unvisited map[*Node]struct{}, distances map[*Node]int) *Node {
@@ -238,53 +246,15 @@ func minDist(unvisited map[*Node]struct{}, distances map[*Node]int) *Node {
 	return n
 }
 
-/* func constructRoutingTables(g *Graph) {
-	var wg sync.WaitGroup
-
-	for _, start := range g.Nodes {
-		wg.Add(1)
-		go func(start *Node) {
-			defer wg.Done()
-			distances, nextHop := Dijkstra(g, start)
-
-			start.RoutingTable = make(map[string]map[string]*Node)
-			for node := range distances {
-				start.RoutingTable[node.Name] = make(map[string]*Node)
-				start.RoutingTable[node.Name]["next_hop"] = nextHop[node]
-			}
-		}(start)
-	}
-
-	wg.Wait()
+func constructRoutingTablesWorker(jobs <-chan *Node, graph *Graph) {
+    for node := range jobs {
+        Dijkstra(graph, node)
+        waitGroup.Done()
+    }
 }
 
-
-//**** 		FONCTION MAIN		 ****//
-
-func main() {
-	start := time.Now()
-    graph := initRandomGraph(2000)
-	fmt.Printf("Graphe créé en %v\n", time.Since(start))
-    constructRoutingTables(&graph)
-    fmt.Printf("Tables de routage créés en %v\n", time.Since(start))
-
-/* 	// Affichage table de routage pour chaque noeud
-	for _, start := range graph.Nodes {
-		fmt.Println("\nDistances les plus courtes du noeud", start.Name)
-		for dest, route := range start.RoutingTable {
-			fmt.Print(start.Name, " -> ", dest, " : ", route["next_hop"].Name, "\n")
-		}
-	}
-	 
-}
-
- */
-
- const numWorkers = 10
-
-func main() {
+func constructAllRoutingTables(graph *Graph) {
     start := time.Now()
-    graph := initRandomGraph(2000)
 
     // Crear un canal para asignar trabajos a goroutines
     jobs := make(chan *Node, len(graph.Nodes))
@@ -296,30 +266,29 @@ func main() {
 
     // Asignar trabajos a las goroutines
     for _, node := range graph.Nodes {
+		waitGroup.Add(1)
         jobs <- node
     }
     close(jobs)
+	 // Esperar a que todas las goroutines completen
+	waitGroup.Wait()
 
-    // Esperar a que todas las goroutines completen
-    waitGroup.Wait()
-
-    fmt.Printf("Tables de routage créés en %v\n", time.Since(start))
+	fmt.Printf("Tables de routage créés en %v\n", time.Since(start))
 }
 
-func constructRoutingTablesWorker(jobs <-chan *Node, graph *Graph) {
-    for node := range jobs {
-        constructRoutingTables(graph, node)
-        waitGroup.Done()
-    }
+
+//**** 		FONCTION MAIN		 ****/
+func main() {
+    graph := initRandomGraph(1000)
+    fmt.Print(numWorkers, "\n")
+    constructAllRoutingTables(&graph)
+
+/* 	// Affichage table de routage pour chaque noeud
+	for _, start := range graph.Nodes {
+		fmt.Println("\nDistances les plus courtes du noeud", start.Name)
+		for dest, route := range start.RoutingTable {
+			fmt.Print(start.Name, " -> ", dest, " : ", route["next_hop"].Name, "\n")
+		}
+	} */
+	 
 }
-
-func constructRoutingTables(graph *Graph, start *Node) {
-    distances, nextHop := Dijkstra(graph, start)
-
-    start.RoutingTable = make(map[string]map[string]*Node)
-    for destNode := range distances {
-        start.RoutingTable[destNode.Name] = make(map[string]*Node)
-        start.RoutingTable[destNode.Name]["next_hop"] = nextHop[destNode]
-    }
-}
-
