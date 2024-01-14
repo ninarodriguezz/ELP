@@ -59,7 +59,7 @@ func initRandomGraph(nodesCount int) Graph {
 	// On appelle les nodes R + num comme ça il y a pas de confusion avec les poids et on a inf possibilités
 	nodes := make([]*Node, nodesCount)
 	for i := 0; i < nodesCount; i++ {
-		nodes[i] = &Node{Name: fmt.Sprintf("R%d", i+1)}
+		nodes[i] = &Node{Name: fmt.Sprintf("R%d", i+1), Channel: make(chan Message)}
 	}
 
 	// Creation liens aléatoirement
@@ -103,16 +103,31 @@ func sendMessage(messageChan chan Message, messageEnvoye Message) {
 }
 
 func hello(nodeSrc *Node, nodeDst *Node) {
-	channel := nodeSrc.Channel
+	channel := nodeSrc.RoutingTable[nodeDst.Name]["next_hop"].Channel
 	helloMessage := Message{Source: nodeSrc, Destination: nodeDst, Content: "Hello"}
 	sendMessage(channel, helloMessage)
+	fmt.Print("Message Hello envoyé depuis ", nodeSrc.Name, " à destination de ", nodeDst.Name, "\n")
+	waitGroup.Done()
+}
+
+func trafficInitializing(g Graph) {
+	for nodeNumber := 0; nodeNumber < len(g.Nodes); nodeNumber++ {
+		waitGroup.Add(1)
+		nodeSrc := g.Nodes[nodeNumber]
+		nodeDst := g.Nodes[rand.Intn(len(g.Nodes))]
+		for nodeDst == nodeSrc {
+			nodeDst = g.Nodes[rand.Intn(len(g.Nodes))]
+		}
+		go hello(nodeSrc, nodeDst)
+	}
+	waitGroup.Wait()
 }
 
 func processMessages(g *Graph, node *Node) { //je rajoute graph pour appeler la fct qui recalcule dijkstra
 	for {
 		select {
 		case message := <-node.Channel:
-			fmt.Printf("Le nœud %s a reçu le message '%s' du nœud %s\n", message.Source.Name, message.Content, message.Destination.Name)
+			fmt.Printf("Le nœud %s a reçu le message '%s' destiné au nœud %s\n", node.Name, message.Content, message.Destination.Name)
 
 			// Actions selon le message reçu
 			switch message.Content {
@@ -134,9 +149,11 @@ func processMessages(g *Graph, node *Node) { //je rajoute graph pour appeler la 
 func routing(node *Node, received Message) {
 	if received.Destination == node && received.Content == "Hello" {
 		helloAckMessage := Message{Source: received.Destination, Destination: received.Source, Content: "Hello Ack"}
-		node.RoutingTable[received.Source.Name]["next_hop"].Channel <- helloAckMessage
+		channel := node.RoutingTable[received.Source.Name]["next_hop"].Channel
+		sendMessage(channel, helloAckMessage)
 	} else if received.Destination != node {
-		node.RoutingTable[received.Destination.Name]["next_hop"].Channel <- received
+		channel := node.RoutingTable[received.Destination.Name]["next_hop"].Channel
+		sendMessage(channel, received)
 	}
 }
 
@@ -183,7 +200,7 @@ func addLinkAndRecalculate(g *Graph, linkinfo LinkInfo) {
 		// Recalcule RoutingTables
 		constructAllRoutingTables(g)
 	} else {
-		fmt.Println("Le lien existait déjà.")
+		fmt.Print("Le lien existait déjà.\n")
 	}
 }
 
@@ -272,9 +289,30 @@ func constructAllRoutingTables(graph *Graph) {
 
 // **** 		FONCTION MAIN		 ****/
 func main() {
-	graph := initRandomGraph(1000)
+	nodesCount := 50
+	graph := initRandomGraph(nodesCount)
 	fmt.Print(numWorkers, "\n")
 	constructAllRoutingTables(&graph)
+
+	for nodeNumber := 0; nodeNumber < len(graph.Nodes); nodeNumber++ {
+		waitGroup.Add(1)
+		nodeSrc := graph.Nodes[nodeNumber]
+		go processMessages(&graph, nodeSrc)
+		nodeDst := graph.Nodes[rand.Intn(len(graph.Nodes))]
+		for nodeDst == nodeSrc {
+			nodeDst = graph.Nodes[rand.Intn(len(graph.Nodes))]
+		}
+		go hello(nodeSrc, nodeDst)
+	}
+	waitGroup.Wait()
+
+	// for true {
+	// 	for nodeNumber := 0; nodeNumber < len(graph.Nodes); nodeNumber++ {
+	// 		node := graph.Nodes[nodeNumber]
+	// 		go processMessages(&graph, node)
+	// 		waitGroup.Wait()
+	// 	}
+	// }
 
 	/* 	// Affichage table de routage pour chaque noeud
 	   	for _, start := range graph.Nodes {
