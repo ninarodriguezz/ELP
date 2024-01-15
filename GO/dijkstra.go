@@ -75,7 +75,7 @@ func initRandomGraph(nodesCount int) Graph {
 			otherNode := nodes[rand.Intn(nodesCount)]
 
 			// Tester si le lien existe déjà et éviter un lien avec lui-même
-			for node == otherNode || edgeExists(node, otherNode) {
+			for node == otherNode || edgeExists(node, otherNode) || len(otherNode.Edges) >= maxEdgesPerNode {
 				otherNode = nodes[rand.Intn(nodesCount)]
 			}
 
@@ -361,7 +361,9 @@ func main() {
 
 	var num1, num2 int
 	fmt.Printf("Veuillez saisir un numéro de routeur : ")
-	fmt.Scanln(num1)
+	fmt.Scanln(&num1)
+	num1 = 2
+
 	fmt.Printf("\nVoici les voisins du routeur choisi :\n")
 	nodeA := graph.Nodes[num1-1]
 
@@ -369,7 +371,7 @@ func main() {
 		fmt.Print(edge.To.Name, " - ")
 	}
 	fmt.Printf("\n\nVeuillez choisir le numéro d'un routeur voisin de %s :", nodeA.Name)
-	fmt.Scanln(num2)
+	fmt.Scanln(&num2)
 	nodeB := graph.Nodes[num2-1]
 
 	link_details := LinkInfo{NodeA: nodeA, NodeB: nodeB}
