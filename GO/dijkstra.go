@@ -50,6 +50,7 @@ const (
 var numWorkers = runtime.NumCPU()
 var waitGroup sync.WaitGroup
 var dijWaitGroup sync.WaitGroup
+var helloWG sync.WaitGroup
 var ackReceived = 0
 
 // ****		FONCTION CRÉATION GRAPHE ALÉATOIRE ****//
@@ -119,7 +120,7 @@ func hello(nodeSrc *Node, nodeDst *Node) {
 	helloMessage := Message{Source: nodeSrc, Destination: nodeDst, Content: "Hello"}
 	sendMessage(channel, helloMessage)
 	fmt.Print("Message Hello envoyé depuis ", nodeSrc.Name, " à destination de ", nodeDst.Name, "\n")
-	waitGroup.Done()
+	helloWG.Done()
 }
 
 func processMessages(g *Graph, node *Node) { //je rajoute graph pour appeler la fct qui recalcule dijkstra
@@ -156,9 +157,8 @@ func routing(node *Node, received Message) {
 		fmt.Print("helloAck envoyé depuis ", node.Name, " vers ", received.Source.Name, "\n")
 
 	} else if received.Destination == node && received.Content == "Hello Ack" {
-		ackReceived++
 		fmt.Print(node.Name, " a reçu un message 'Hello Ack' : liaison établie entre les noeuds ", node.Name, " et ", received.Source.Name, "\n")
-
+		ackReceived++
 	} else if received.Destination != node {
 		nodeDst := node.RoutingTable[received.Destination.Name]["next_hop"]
 		sendMessage(nodeDst.Channel, received)
@@ -341,7 +341,7 @@ func main() {
 	// }
 
 	for nodeNumber := 0; nodeNumber < len(graph.Nodes); nodeNumber++ {
-		waitGroup.Add(1)
+		helloWG.Add(1)
 
 		nodeSrc := graph.Nodes[nodeNumber]
 		go processMessages(&graph, nodeSrc)
@@ -353,23 +353,23 @@ func main() {
 		go hello(nodeSrc, nodeDst)
 
 	}
-	waitGroup.Add(1)
+	helloWG.Add(1)
 	for ackReceived < nodesCount {
 	}
-	waitGroup.Done()
-	waitGroup.Wait()
+	helloWG.Done()
+	helloWG.Wait()
 
 	var num1, num2 int
-	fmt.Printf("Veuillez saisir un numéro de routeur : ")
-	fmt.Scanln(num1)
-	fmt.Printf("\nVoici les voisins du routeur choisi :\n")
+	fmt.Printf("Veuillez saisir un numéro de routeur : \nR")
+	fmt.Scanln(&num1)
+	fmt.Printf("\nVoici les voisins du routeur choisi :\n- ")
 	nodeA := graph.Nodes[num1-1]
 
 	for _, edge := range nodeA.Edges {
 		fmt.Print(edge.To.Name, " - ")
 	}
-	fmt.Printf("\n\nVeuillez choisir le numéro d'un routeur voisin de %s :", nodeA.Name)
-	fmt.Scanln(num2)
+	fmt.Printf("\n\nVeuillez choisir le numéro d'un routeur voisin de %s :\nR", nodeA.Name)
+	fmt.Scanln(&num2)
 	nodeB := graph.Nodes[num2-1]
 
 	link_details := LinkInfo{NodeA: nodeA, NodeB: nodeB}
