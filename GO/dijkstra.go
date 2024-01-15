@@ -141,8 +141,6 @@ func processMessages(g *Graph, node *Node, done chan struct{}) { //je rajoute gr
 				addLinkAndRecalculate(g, message.LinkDetails)
 			default:
 				fmt.Printf("Message de type inconnu: %s\n", message.Content)
-		case <-done:
-			return
 			}
 
 		}
@@ -335,7 +333,6 @@ func main() {
 	constructAllRoutingTables(&graph)
 
 	// Affichage table de routage pour chaque noeud
-<<<<<<< HEAD
 	// for _, start := range graph.Nodes {
 	// 	fmt.Println("\nDistances les plus courtes du noeud", start.Name)
 	// 	for dest, route := range start.RoutingTable {
@@ -343,15 +340,6 @@ func main() {
 	// 	}
 	// }
 	done := make(chan struct{})
-=======
-	for _, start := range graph.Nodes {
-		fmt.Println("\nDistances les plus courtes du noeud", start.Name)
-		for dest, route := range start.RoutingTable {
-			fmt.Print(start.Name, " -> ", dest, " : ", route["next_hop"].Name, "\n")
-		}
-	}
-
->>>>>>> 7c8357a275377c1b001f9b34396cca348df83ecd
 	for nodeNumber := 0; nodeNumber < len(graph.Nodes); nodeNumber++ {
 		waitGroup.Add(1)
 
@@ -385,26 +373,10 @@ func main() {
 	nodeB := graph.Nodes[num2-1]
 
 	link_details := LinkInfo{NodeA: nodeA, NodeB: nodeB}
-<<<<<<< HEAD
 	link_failure := Message{Source: nodeA, Destination: graph.Nodes[10], Content: "link no longer available", LinkDetails: link_details}
 	sendMessage(graph.Nodes[10].Channel, link_failure)
 	processMessages(&graph, graph.Nodes[10], done)
 	close(done)
-=======
-	link_failure := Message{Source: nodeA, Destination: graph.Nodes[nodesCount-1], Content: "link no longer available", LinkDetails: link_details}
-	// waitGroup.Add(2)
-	go sendMessage(graph.Nodes[nodesCount-1].Channel, link_failure)
-	go processMessages(&graph, graph.Nodes[nodesCount-1])
-	waitGroup.Wait()
-
-	// Affichage table de routage pour chaque noeud
-	for _, start := range graph.Nodes {
-		fmt.Println("\nDistances les plus courtes du noeud", start.Name)
-		for dest, route := range start.RoutingTable {
-			fmt.Print(start.Name, " -> ", dest, " : ", route["next_hop"].Name, "\n")
-		}
-	}
->>>>>>> 7c8357a275377c1b001f9b34396cca348df83ecd
 
 	closeChan(graph)
 
