@@ -151,18 +151,23 @@ func routing(node *Node, received Message) {
 	if received.Destination == node && received.Content == "Hello" {
 		helloAckMessage := Message{Source: received.Destination, Destination: received.Source, Content: "Hello Ack"}
 		nodeDst := node.RoutingTable[received.Source.Name]["next_hop"]
-
-		messRcv := <-nodeDst.Channel
-		routing(nodeDst, messRcv)
+		// fmt.Print("AA\n")
+		// messRcv := <-nodeDst.Channel
+		// fmt.Print("A\n")
+		// routing(nodeDst, messRcv)
 
 		sendMessage(nodeDst.Channel, helloAckMessage)
+		fmt.Print("helloAck envoyé\n")
 	} else if received.Destination != node {
 		nodeDst := node.RoutingTable[received.Source.Name]["next_hop"]
+		// fmt.Print("BB\n")
 
-		messRcv := <-nodeDst.Channel
-		routing(nodeDst, messRcv)
+		// messRcv := <-nodeDst.Channel
+		// fmt.Print("B\n")
+		// routing(nodeDst, messRcv)
 
 		sendMessage(nodeDst.Channel, received)
+		fmt.Print("message routé\n")
 	}
 }
 
