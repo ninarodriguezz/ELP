@@ -43,14 +43,14 @@ type LinkInfo struct {
 // definition caracteristiques du graphe
 const (
 	minEdgesPerNode = 2 //au moins deux pour s'assurer qu'un node n'est pas isolé, probabilité de configuration de trois noeuds en triangle negligé :P
-	maxEdgesPerNode = 5
+	maxEdgesPerNode = 3
 	weightRange     = 20 //poids max des edges
 )
 
 var numWorkers = runtime.NumCPU()
 var waitGroup sync.WaitGroup
+var dijWaitGroup sync.WaitGroup
 var ackReceived = 0
-
 
 // ****		FONCTION CRÉATION GRAPHE ALÉATOIRE ****//
 func initRandomGraph(nodesCount int) Graph {
@@ -135,6 +135,7 @@ func processMessages(g *Graph, node *Node, done chan struct{}) { //je rajoute gr
 			case "Hello Ack":
 				go routing(node, message)
 			case "link no longer available":
+				waitGroup.Done()
 				removeLinkAndRecalculate(g, message.LinkDetails) //fonction qui va enlever le lien et recalculer la routing table de tous les routeurs
 			case "new link available":
 				addLinkAndRecalculate(g, message.LinkDetails)
@@ -183,6 +184,7 @@ func removeLinkAndRecalculate(g *Graph, linkinfo LinkInfo) {
 		}
 	}
 	constructAllRoutingTables(g)
+	waitGroup.Done()
 }
 
 func addLinkAndRecalculate(g *Graph, linkinfo LinkInfo) {
@@ -269,7 +271,7 @@ func minDist(unvisited map[*Node]struct{}, distances map[*Node]int) *Node {
 func constructRoutingTablesWorker(jobs <-chan *Node, graph *Graph) {
 	for node := range jobs {
 		Dijkstra(graph, node)
-		waitGroup.Done()
+		dijWaitGroup.Done()
 	}
 }
 
@@ -286,13 +288,14 @@ func constructAllRoutingTables(graph *Graph) {
 
 	// Asignar trabajos a las goroutines
 	for _, node := range graph.Nodes {
-		waitGroup.Add(1)
+		dijWaitGroup.Add(1)
 		jobs <- node
 	}
-	close(jobs)
-	// Esperar a que todas las goroutines completen
-	waitGroup.Wait()
 
+	close(jobs)
+
+	// Esperar a que todas las goroutines completen
+	dijWaitGroup.Wait()
 	fmt.Printf("Tables de routage créés en %v\n", time.Since(start))
 }
 
@@ -332,6 +335,7 @@ func main() {
 	constructAllRoutingTables(&graph)
 
 	// Affichage table de routage pour chaque noeud
+<<<<<<< HEAD
 	// for _, start := range graph.Nodes {
 	// 	fmt.Println("\nDistances les plus courtes du noeud", start.Name)
 	// 	for dest, route := range start.RoutingTable {
@@ -339,6 +343,15 @@ func main() {
 	// 	}
 	// }
 	done := make(chan struct{})
+=======
+	for _, start := range graph.Nodes {
+		fmt.Println("\nDistances les plus courtes du noeud", start.Name)
+		for dest, route := range start.RoutingTable {
+			fmt.Print(start.Name, " -> ", dest, " : ", route["next_hop"].Name, "\n")
+		}
+	}
+
+>>>>>>> 7c8357a275377c1b001f9b34396cca348df83ecd
 	for nodeNumber := 0; nodeNumber < len(graph.Nodes); nodeNumber++ {
 		waitGroup.Add(1)
 
@@ -361,10 +374,26 @@ func main() {
 	nodeA := graph.Nodes[0]
 	nodeB := nodeA.Edges[0].To
 	link_details := LinkInfo{NodeA: nodeA, NodeB: nodeB}
+<<<<<<< HEAD
 	link_failure := Message{Source: nodeA, Destination: graph.Nodes[10], Content: "link no longer available", LinkDetails: link_details}
 	sendMessage(graph.Nodes[10].Channel, link_failure)
 	processMessages(&graph, graph.Nodes[10], done)
 	close(done)
+=======
+	link_failure := Message{Source: nodeA, Destination: graph.Nodes[nodesCount-1], Content: "link no longer available", LinkDetails: link_details}
+	waitGroup.Add(2)
+	go sendMessage(graph.Nodes[nodesCount-1].Channel, link_failure)
+	go processMessages(&graph, graph.Nodes[nodesCount-1])
+	waitGroup.Wait()
+
+	// Affichage table de routage pour chaque noeud
+	for _, start := range graph.Nodes {
+		fmt.Println("\nDistances les plus courtes du noeud", start.Name)
+		for dest, route := range start.RoutingTable {
+			fmt.Print(start.Name, " -> ", dest, " : ", route["next_hop"].Name, "\n")
+		}
+	}
+>>>>>>> 7c8357a275377c1b001f9b34396cca348df83ecd
 
 	closeChan(graph)
 
