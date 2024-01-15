@@ -8,6 +8,8 @@ import (
 	"time"
 )
 
+//**** STRUCTURES ****//
+
 // Structure définissant un graphe
 type Graph struct {
 	Nodes []*Node
@@ -40,20 +42,29 @@ type LinkInfo struct {
 	NodeB *Node //nodes qui ont perdu ou récuperé un lien
 }
 
-// definition caracteristiques du graphe
+//**** INITIALISATION ****//
+
+// Définition des caracteristiques du graphe
 const (
 	minEdgesPerNode = 2 //au moins deux pour s'assurer qu'un node n'est pas isolé, probabilité de configuration de trois noeuds en triangle negligé :P
 	maxEdgesPerNode = 3
 	weightRange     = 20 //poids max des edges
 )
 
+// Variables globales //
 var numWorkers = runtime.NumCPU()
 var waitGroup sync.WaitGroup
 var dijWaitGroup sync.WaitGroup
+var helloWG sync.WaitGroup
+var closeWaitGroup sync.WaitGroup
 var ackReceived = 0
+var nodesCount int
 
-// ****		FONCTION CRÉATION GRAPHE ALÉATOIRE ****//
+// **** CRÉATION GRAPHE ALÉATOIRE ****//
+
 func initRandomGraph(nodesCount int) Graph {
+	/*Docstring*/
+
 	rand.Seed(time.Now().UnixNano())
 	//permet d'obtenir une séquence aléatoire differente à chaque execution du code,
 	//on se base sur le temps qui est un parametre qui change constantement
@@ -91,6 +102,7 @@ func initRandomGraph(nodesCount int) Graph {
 
 // Fct qui verifie si le lien existe déjà
 func edgeExists(nodeA, nodeB *Node) bool {
+	/*Docstring*/
 	for _, edge := range nodeA.Edges {
 		if edge.To == nodeB {
 			return true
@@ -99,30 +111,24 @@ func edgeExists(nodeA, nodeB *Node) bool {
 	return false
 }
 
-//****	FONCTIONS TRANSMITION DE MESSAGES	****//
+//**** TRANSMITION DE MESSAGES	****//
 
 func sendMessage(messageChan chan Message, messageEnvoye Message) {
-
+	/*Docstring*/
 	messageChan <- messageEnvoye
-	// // Check if the channel is open before sending the message
-	// select {
-	// case messageChan <- messageEnvoye:
-	// 	// Message sent successfully
-	// default:
-	// 	// The channel is closed, handle the error
-	// 	fmt.Println("Failed to send message: channel closed")
-	// }
 }
 
 func hello(nodeSrc *Node, nodeDst *Node) {
+	/*Docstring*/
 	channel := nodeSrc.RoutingTable[nodeDst.Name]["next_hop"].Channel
 	helloMessage := Message{Source: nodeSrc, Destination: nodeDst, Content: "Hello"}
 	sendMessage(channel, helloMessage)
-	fmt.Print("Message Hello envoyé depuis ", nodeSrc.Name, " à destination de ", nodeDst.Name, "\n")
-	waitGroup.Done()
+	// fmt.Print("Message Hello envoyé depuis ", nodeSrc.Name, " à destination de ", nodeDst.Name, "\n")
+	helloWG.Done()
 }
 
 func processMessages(g *Graph, node *Node) { //je rajoute graph pour appeler la fct qui recalcule dijkstra
+	/*Docstring*/
 	for {
 		select {
 		case message := <-node.Channel:
@@ -138,6 +144,7 @@ func processMessages(g *Graph, node *Node) { //je rajoute graph pour appeler la 
 				waitGroup.Done()
 				removeLinkAndRecalculate(g, message.LinkDetails) //fonction qui va enlever le lien et recalculer la routing table de tous les routeurs
 			case "new link available":
+				waitGroup.Done()
 				addLinkAndRecalculate(g, message.LinkDetails)
 			default:
 				fmt.Printf("Message de type inconnu: %s\n", message.Content)
@@ -148,17 +155,17 @@ func processMessages(g *Graph, node *Node) { //je rajoute graph pour appeler la 
 }
 
 func routing(node *Node, received Message) {
+	/*Docstring*/
 	if received.Destination == node && received.Content == "Hello" {
-		fmt.Print("Hello reçu par ", node.Name, " de la part de ", received.Source.Name, "\n")
+		// fmt.Print("Hello reçu par ", node.Name, " de la part de ", received.Source.Name, "\n")
 		helloAckMessage := Message{Source: received.Destination, Destination: received.Source, Content: "Hello Ack"}
 		nodeDst := node.RoutingTable[received.Source.Name]["next_hop"]
 		sendMessage(nodeDst.Channel, helloAckMessage)
-		fmt.Print("helloAck envoyé depuis ", node.Name, " vers ", received.Source.Name, "\n")
+		// fmt.Print("helloAck envoyé depuis ", node.Name, " vers ", received.Source.Name, "\n")
 
 	} else if received.Destination == node && received.Content == "Hello Ack" {
-		ackReceived++
 		fmt.Print(node.Name, " a reçu un message 'Hello Ack' : liaison établie entre les noeuds ", node.Name, " et ", received.Source.Name, "\n")
-
+		ackReceived++
 	} else if received.Destination != node {
 		nodeDst := node.RoutingTable[received.Destination.Name]["next_hop"]
 		sendMessage(nodeDst.Channel, received)
@@ -166,6 +173,7 @@ func routing(node *Node, received Message) {
 }
 
 func removeLinkAndRecalculate(g *Graph, linkinfo LinkInfo) {
+	/*Docstring*/
 	nodeA := linkinfo.NodeA
 	nodeB := linkinfo.NodeB
 	for i, edge := range nodeA.Edges {
@@ -186,6 +194,7 @@ func removeLinkAndRecalculate(g *Graph, linkinfo LinkInfo) {
 }
 
 func addLinkAndRecalculate(g *Graph, linkinfo LinkInfo) {
+	/*Docstring*/
 	nodeA := linkinfo.NodeA
 	nodeB := linkinfo.NodeB
 	// j'ai besoin du poids pour créer le nouveau Edge, je le met dans la classe LinkInfo ou je fais comment?
@@ -211,10 +220,13 @@ func addLinkAndRecalculate(g *Graph, linkinfo LinkInfo) {
 	} else {
 		fmt.Print("Le lien existait déjà.\n")
 	}
+	waitGroup.Done()
 }
 
 // **** 		FONCTIONS CONSTRUCTION TABLES DE ROUTAGE		****//
+
 func Dijkstra(g *Graph, start *Node) {
+	/*Docstring*/
 	unvisited := make(map[*Node]struct{})
 	distances := make(map[*Node]int)
 	next_hop := make(map[*Node]*Node)
@@ -255,6 +267,7 @@ func Dijkstra(g *Graph, start *Node) {
 }
 
 func minDist(unvisited map[*Node]struct{}, distances map[*Node]int) *Node {
+	/*Docstring*/
 	min := 1<<31 - 1
 	var n *Node
 	for node := range unvisited {
@@ -267,6 +280,7 @@ func minDist(unvisited map[*Node]struct{}, distances map[*Node]int) *Node {
 }
 
 func constructRoutingTablesWorker(jobs <-chan *Node, graph *Graph) {
+	/*Docstring*/
 	for node := range jobs {
 		Dijkstra(graph, node)
 		dijWaitGroup.Done()
@@ -274,10 +288,11 @@ func constructRoutingTablesWorker(jobs <-chan *Node, graph *Graph) {
 }
 
 func constructAllRoutingTables(graph *Graph) {
+	/*Docstring*/
 	start := time.Now()
 
 	// Crear un canal para asignar trabajos a goroutines
-	jobs := make(chan *Node, len(graph.Nodes))
+	jobs := make(chan *Node, nodesCount)
 
 	// Iniciar goroutines para construir tablas de enrutamiento
 	for i := 0; i < numWorkers; i++ {
@@ -294,16 +309,14 @@ func constructAllRoutingTables(graph *Graph) {
 
 	// Esperar a que todas las goroutines completen
 	dijWaitGroup.Wait()
-	fmt.Printf("Tables de routage créés en %v\n", time.Since(start))
+	fmt.Printf("\nTables de routage créés en %v\n\n,", time.Since(start))
 }
 
 //****		FERMETURE DE TOUS LES CHANNELS		****//
 
 func closeChan(g Graph) {
-
-	var closeWaitGroup sync.WaitGroup
-
-	for nodeNum := 0; nodeNum < len(g.Nodes); nodeNum++ {
+	/*Docstring*/
+	for nodeNum := 0; nodeNum < nodesCount; nodeNum++ {
 		closeWaitGroup.Add(1)
 		go func(node *Node) {
 			defer closeWaitGroup.Done()
@@ -315,8 +328,11 @@ func closeChan(g Graph) {
 }
 
 // **** 		FONCTION MAIN		 ****/
+
 func main() {
-	var nodesCount int
+	/*Docstring*/
+
+	//Création du graphe et des tables de routage pour chaque noeud
 	fmt.Print("Quelle est la taille n du graphe ? (minimum n = 10) \nn = ")
 	_, err := fmt.Scanln(&nodesCount)
 	if err != nil {
@@ -340,25 +356,32 @@ func main() {
 	// 	}
 	// }
 
-	for nodeNumber := 0; nodeNumber < len(graph.Nodes); nodeNumber++ {
-		waitGroup.Add(1)
+	//Lancement des goroutines sur chaque noeud pour process les messages reçu
+	//et envoyer un Hello Message à un noeud aléatoire
+	for nodeNumber := 0; nodeNumber < nodesCount; nodeNumber++ {
+		helloWG.Add(1) //Incrémentation du wait group pour la goroutine hello
 
 		nodeSrc := graph.Nodes[nodeNumber]
 		go processMessages(&graph, nodeSrc)
 
-		nodeDst := graph.Nodes[rand.Intn(len(graph.Nodes))]
+		nodeDst := graph.Nodes[rand.Intn(nodesCount)]
 		for nodeDst == nodeSrc {
-			nodeDst = graph.Nodes[rand.Intn(len(graph.Nodes))]
+			nodeDst = graph.Nodes[rand.Intn(nodesCount)]
 		}
 		go hello(nodeSrc, nodeDst)
 
 	}
-	waitGroup.Add(1)
+	helloWG.Add(1)
+	//Incrémentation du wait group pour toutes les goroutines processMessages
+	//On attend que tous les noeuds aient reçu le message Hello Ack pour décrémenter le wait group
 	for ackReceived < nodesCount {
 	}
-	waitGroup.Done()
-	waitGroup.Wait()
+	helloWG.Done()
+	//Se décrémente quand ackReceived s'est incrémenté jusqu'à atteindre nodesCount,
+	//soit quand tous les messages Hello et Hello Ack ont fini d'être routés
+	helloWG.Wait()
 
+<<<<<<< HEAD
 	var num1, num2 int
 	fmt.Printf("Veuillez saisir un numéro de routeur : ")
 	fmt.Scanln(&num1)
@@ -373,22 +396,93 @@ func main() {
 	fmt.Printf("\n\nVeuillez choisir le numéro d'un routeur voisin de %s :", nodeA.Name)
 	fmt.Scanln(&num2)
 	nodeB := graph.Nodes[num2-1]
+=======
+	//Boucle infinie pour que l'utilisateur puisse agir sur le graphe:
+	//ajout ou suppression de liens, fermeture de tous les canaux
+	for {
 
-	link_details := LinkInfo{NodeA: nodeA, NodeB: nodeB}
-	link_failure := Message{Source: nodeA, Destination: graph.Nodes[nodesCount-1], Content: "link no longer available", LinkDetails: link_details}
-	waitGroup.Add(2)
-	go sendMessage(graph.Nodes[nodesCount-1].Channel, link_failure)
-	go processMessages(&graph, graph.Nodes[nodesCount-1])
-	waitGroup.Wait()
+		var commande int
+		fmt.Print("\nPour ajouter un lien au graphe, entrer 1.\nPour supprimer un lien existant, entrer 2.\nPour fermer tous les canaux de communication, entrer 3.\nCommande 1, 2 ou 3 : ")
+		fmt.Scanln(&commande)
+>>>>>>> 12a5d3e5fd704ce998133027abed90cf270b6a6d
 
-	// Affichage table de routage pour chaque noeud
-	for _, start := range graph.Nodes {
-		fmt.Println("\nDistances les plus courtes du noeud", start.Name)
-		for dest, route := range start.RoutingTable {
-			fmt.Print(start.Name, " -> ", dest, " : ", route["next_hop"].Name, "\n")
+		if commande == 1 {
+			//Ajout d'un lien
+			var num1, num2 int
+			fmt.Printf("\n\n\nVeuillez saisir un numéro de routeur : \nR")
+			fmt.Scanln(&num1)
+			for num1 < 1 || num1 > nodesCount {
+				fmt.Printf("Saisie non valide.\nVeuillez saisir un numéro de routeur : \nR")
+				fmt.Scanln(&num1)
+			}
+			fmt.Printf("\nVoici les voisins du routeur choisi :\n- ")
+			nodeA := graph.Nodes[num1-1]
+
+			for _, edge := range nodeA.Edges {
+				fmt.Print(edge.To.Name, " - ")
+			}
+			fmt.Printf("\n\nVeuillez choisir le numéro d'un routeur voisin de %s :\nR", nodeA.Name)
+			fmt.Scanln(&num2)
+			for num2 < 1 || num2 > nodesCount {
+				fmt.Printf("Saisie non valide.\nVeuillez saisir un numéro de routeur : \nR")
+				fmt.Scanln(&num2)
+			}
+			nodeB := graph.Nodes[num2-1]
+
+			link_details := LinkInfo{NodeA: nodeA, NodeB: nodeB}
+			link_creation := Message{Source: nodeA, Destination: graph.Nodes[nodesCount-1], Content: "new link available", LinkDetails: link_details}
+			waitGroup.Add(2)
+			go sendMessage(graph.Nodes[nodesCount-1].Channel, link_creation)
+			go processMessages(&graph, graph.Nodes[nodesCount-1])
+			waitGroup.Wait()
+
+		} else if commande == 2 {
+			//Suppression d'un lien
+			var num1, num2 int
+			fmt.Printf("\n\n\nVeuillez saisir un numéro de routeur : \nR")
+			fmt.Scanln(&num1)
+			for num1 < 1 || num1 > nodesCount {
+				fmt.Printf("Saisie non valide.\nVeuillez saisir un numéro de routeur : \nR")
+				fmt.Scanln(&num1)
+			}
+			fmt.Printf("\nVoici les voisins du routeur choisi :\n- ")
+			nodeA := graph.Nodes[num1-1]
+
+			for _, edge := range nodeA.Edges {
+				fmt.Print(edge.To.Name, " - ")
+			}
+			fmt.Printf("\n\nVeuillez choisir le numéro d'un routeur voisin de %s :\nR", nodeA.Name)
+			fmt.Scanln(&num2)
+			for num2 < 1 || num2 > nodesCount {
+				fmt.Printf("Saisie non valide.\nVeuillez saisir un numéro de routeur : \nR")
+				fmt.Scanln(&num2)
+			}
+			nodeB := graph.Nodes[num2-1]
+
+			link_details := LinkInfo{NodeA: nodeA, NodeB: nodeB}
+			link_failure := Message{Source: nodeA, Destination: graph.Nodes[nodesCount-1], Content: "link no longer available", LinkDetails: link_details}
+			waitGroup.Add(2)
+			go sendMessage(graph.Nodes[nodesCount-1].Channel, link_failure)
+			go processMessages(&graph, graph.Nodes[nodesCount-1])
+			waitGroup.Wait()
+
+		} else if commande == 3 {
+			break
+		} else {
+			fmt.Print("\nVeillez à entrer 1, 2 ou 3\n")
 		}
 	}
 
 	closeChan(graph)
 
 }
+
+/*
+
+// Affichage table de routage pour chaque noeud
+for _, start := range graph.Nodes {
+	fmt.Println("\nDistances les plus courtes du noeud", start.Name)
+	for dest, route := range start.RoutingTable {
+		fmt.Print(start.Name, " -> ", dest, " : ", route["next_hop"].Name, "\n")
+	}
+} */
