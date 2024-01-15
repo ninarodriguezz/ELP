@@ -51,6 +51,7 @@ var numWorkers = runtime.NumCPU()
 var waitGroup sync.WaitGroup
 var ackReceived = 0
 
+
 // ****		FONCTION CRÉATION GRAPHE ALÉATOIRE ****//
 func initRandomGraph(nodesCount int) Graph {
 	rand.Seed(time.Now().UnixNano())
@@ -353,6 +354,13 @@ func main() {
 	}
 	waitGroup.Done()
 	waitGroup.Wait()
+
+	nodeA := graph.Nodes[0]
+	nodeB := nodeA.Edges[0].To
+	link_details := {LinkDetails:{NodeA: nodeA, NodeB: nodeB}
+	link_failure := Message{Source: nodeA, Destination: graph.Nodes[n-1], Content: "link no longer available", LinkDetails: link_details}
+	sendMessage(graph.Nodes[n-1].Channel, link_failure)
+	processMessages(graph, graph.Nodes[n-1])
 
 	closeChan(graph)
 
