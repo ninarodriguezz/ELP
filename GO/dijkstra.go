@@ -100,14 +100,16 @@ func edgeExists(nodeA, nodeB *Node) bool {
 //****	FONCTIONS TRANSMITION DE MESSAGES	****//
 
 func sendMessage(messageChan chan Message, messageEnvoye Message) {
-	// Check if the channel is open before sending the message
-    select {
-    case messageChan <- messageEnvoye:
-        // Message sent successfully
-    default:
-        // The channel is closed, handle the error
-        fmt.Println("Failed to send message: channel closed")
-    }
+
+	messageChan <- messageEnvoye
+	// // Check if the channel is open before sending the message
+	// select {
+	// case messageChan <- messageEnvoye:
+	// 	// Message sent successfully
+	// default:
+	// 	// The channel is closed, handle the error
+	// 	fmt.Println("Failed to send message: channel closed")
+	// }
 }
 
 func hello(nodeSrc *Node, nodeDst *Node) {
@@ -142,11 +144,8 @@ func processMessages(g *Graph, node *Node) { //je rajoute graph pour appeler la 
 }
 
 func routing(node *Node, received Message) {
-<<<<<<< HEAD
-=======
-
->>>>>>> f42c6dfc323599e7b644dae35896264a769a189b
 	if received.Destination == node && received.Content == "Hello" {
+		fmt.Print("Hello reçu par ", node.Name, " de la part de ", received.Source.Name, "\n")
 		helloAckMessage := Message{Source: received.Destination, Destination: received.Source, Content: "Hello Ack"}
 		nodeDst := node.RoutingTable[received.Source.Name]["next_hop"]
 		sendMessage(nodeDst.Channel, helloAckMessage)
@@ -157,7 +156,7 @@ func routing(node *Node, received Message) {
 		fmt.Print(node.Name, " a reçu un message 'Hello Ack' : liaison établie entre les noeuds ", node.Name, " et ", received.Source.Name, "\n")
 
 	} else if received.Destination != node {
-		nodeDst := node.RoutingTable[received.Source.Name]["next_hop"]
+		nodeDst := node.RoutingTable[received.Destination.Name]["next_hop"]
 		sendMessage(nodeDst.Channel, received)
 	}
 }
@@ -318,6 +317,14 @@ func main() {
 	fmt.Print(numWorkers, " CPU\n")
 	constructAllRoutingTables(&graph)
 
+	// Affichage table de routage pour chaque noeud
+	// for _, start := range graph.Nodes {
+	// 	fmt.Println("\nDistances les plus courtes du noeud", start.Name)
+	// 	for dest, route := range start.RoutingTable {
+	// 		fmt.Print(start.Name, " -> ", dest, " : ", route["next_hop"].Name, "\n")
+	// 	}
+	// }
+
 	for nodeNumber := 0; nodeNumber < len(graph.Nodes); nodeNumber++ {
 		waitGroup.Add(1)
 
@@ -337,22 +344,8 @@ func main() {
 	waitGroup.Done()
 	waitGroup.Wait()
 
+	time.Sleep(60)
+
 	closeChan(graph)
-
-	// for true {
-	// 	for nodeNumber := 0; nodeNumber < len(graph.Nodes); nodeNumber++ {
-	// 		node := graph.Nodes[nodeNumber]
-	// 		go processMessages(&graph, node)
-	// 		waitGroup.Wait()
-	// 	}
-	// }
-
-	/* 	// Affichage table de routage pour chaque noeud
-	   	for _, start := range graph.Nodes {
-	   		fmt.Println("\nDistances les plus courtes du noeud", start.Name)
-	   		for dest, route := range start.RoutingTable {
-	   			fmt.Print(start.Name, " -> ", dest, " : ", route["next_hop"].Name, "\n")
-	   		}
-	   	} */
 
 }
