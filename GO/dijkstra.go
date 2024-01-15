@@ -357,10 +357,10 @@ func main() {
 
 	nodeA := graph.Nodes[0]
 	nodeB := nodeA.Edges[0].To
-	link_details := {LinkDetails:{NodeA: nodeA, NodeB: nodeB}
-	link_failure := Message{Source: nodeA, Destination: graph.Nodes[n-1], Content: "link no longer available", LinkDetails: link_details}
-	sendMessage(graph.Nodes[n-1].Channel, link_failure)
-	processMessages(graph, graph.Nodes[n-1])
+	link_details := LinkInfo{NodeA: nodeA, NodeB: nodeB}
+	link_failure := Message{Source: nodeA, Destination: graph.Nodes[10], Content: "link no longer available", LinkDetails: link_details}
+	sendMessage(graph.Nodes[10].Channel, link_failure)
+	processMessages(&graph, graph.Nodes[10])
 
 	closeChan(graph)
 
