@@ -132,9 +132,9 @@ func processMessages(g *Graph, node *Node) { //je rajoute graph pour appeler la 
 			// Actions selon le message reçu
 			switch message.Content {
 			case "Hello":
-				routing(node, message)
+				go routing(node, message)
 			case "Hello Ack":
-				routing(node, message)
+				go routing(node, message)
 			case "link no longer available":
 				removeLinkAndRecalculate(g, message.LinkDetails) //fonction qui va enlever le lien et recalculer la routing table de tous les routeurs
 			case "new link available":
@@ -157,7 +157,7 @@ func routing(node *Node, received Message) {
 		// routing(nodeDst, messRcv)
 
 		sendMessage(nodeDst.Channel, helloAckMessage)
-		fmt.Print("helloAck envoyé\n")
+		fmt.Print("helloAck envoyé depuis", node.Name, " vers ", received.Source.Name, "\n")
 	} else if received.Destination != node {
 		nodeDst := node.RoutingTable[received.Source.Name]["next_hop"]
 		// fmt.Print("BB\n")
