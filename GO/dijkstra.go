@@ -60,7 +60,8 @@ func initRandomGraph(nodesCount int) Graph {
 	// On appelle les nodes R + num comme ça il y a pas de confusion avec les poids et on a inf possibilités
 	nodes := make([]*Node, nodesCount)
 	for i := 0; i < nodesCount; i++ {
-		nodes[i] = &Node{Name: fmt.Sprintf("R%d", i+1), Channel: make(chan Message)}
+		channel := make(chan Message)
+		nodes[i] = &Node{Name: fmt.Sprintf("R%d", i+1), Channel: channel}
 	}
 
 	// Creation liens aléatoirement
@@ -142,10 +143,6 @@ func processMessages(g *Graph, node *Node) { //je rajoute graph pour appeler la 
 }
 
 func routing(node *Node, received Message) {
-<<<<<<< HEAD
-=======
-
->>>>>>> f42c6dfc323599e7b644dae35896264a769a189b
 	if received.Destination == node && received.Content == "Hello" {
 		helloAckMessage := Message{Source: received.Destination, Destination: received.Source, Content: "Hello Ack"}
 		nodeDst := node.RoutingTable[received.Source.Name]["next_hop"]
@@ -295,10 +292,20 @@ func constructAllRoutingTables(graph *Graph) {
 //****		FERMETURE DE TOUS LES CHANNELS		****//
 
 func closeChan(g Graph) {
+
+	var closeWaitGroup sync.WaitGroup
+
 	for nodeNum := 0; nodeNum < len(g.Nodes); nodeNum++ {
-		close(g.Nodes[nodeNum].Channel)
+		closeWaitGroup.Add(1)
+		go func(node *Node) {
+			defer closeWaitGroup.Done()
+			close(node.Channel)
+		}(g.Nodes[nodeNum])
 	}
+
+	closeWaitGroup.Wait()
 }
+	
 
 // **** 		FONCTION MAIN		 ****/
 func main() {
