@@ -79,7 +79,7 @@ func initRandomGraph(nodesCount int) Graph {
 			}
 
 			// Creer le lien dans les deux sens
-			edge := &Edge{To: otherNode, Weight: rand.Intn(weightRange)}
+			edge := &Edge{To: otherNode, Weight: rand.Intn(weightRange) + 1}
 			node.Edges = append(node.Edges, edge)
 			otherNode.Edges = append(otherNode.Edges, &Edge{To: node, Weight: edge.Weight})
 		}
@@ -308,7 +308,6 @@ func closeChan(g Graph) {
 
 	closeWaitGroup.Wait()
 }
-	
 
 // **** 		FONCTION MAIN		 ****/
 func main() {
@@ -354,8 +353,6 @@ func main() {
 	}
 	waitGroup.Done()
 	waitGroup.Wait()
-
-	time.Sleep(60)
 
 	closeChan(graph)
 
