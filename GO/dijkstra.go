@@ -99,7 +99,14 @@ func edgeExists(nodeA, nodeB *Node) bool {
 //****	FONCTIONS TRANSMITION DE MESSAGES	****//
 
 func sendMessage(messageChan chan Message, messageEnvoye Message) {
-	messageChan <- messageEnvoye
+	// Check if the channel is open before sending the message
+    select {
+    case messageChan <- messageEnvoye:
+        // Message sent successfully
+    default:
+        // The channel is closed, handle the error
+        fmt.Println("Failed to send message: channel closed")
+    }
 }
 
 func hello(nodeSrc *Node, nodeDst *Node) {
@@ -147,7 +154,6 @@ func processMessages(g *Graph, node *Node) { //je rajoute graph pour appeler la 
 }
 
 func routing(node *Node, received Message) {
-	fmt.Print("qqchose\n")
 	if received.Destination == node && received.Content == "Hello" {
 		helloAckMessage := Message{Source: received.Destination, Destination: received.Source, Content: "Hello Ack"}
 		nodeDst := node.RoutingTable[received.Source.Name]["next_hop"]
@@ -312,8 +318,17 @@ func closeChan(g Graph) {
 // **** 		FONCTION MAIN		 ****/
 func main() {
 	var nodesCount int
-	fmt.Print("Quelle est la taille n du graphe ?\nn = ")
-	fmt.Scanln(&nodesCount)
+	fmt.Print("Quelle est la taille n du graphe ? (minimum n = 10) \nn = ")
+	_, err := fmt.Scanln(&nodesCount)
+	if err != nil {
+		fmt.Println("Error reading input:", err)
+		return
+	}
+	if nodesCount <= 0 {
+		fmt.Println("Invalid input. Size 'n' should be a positive integer.")
+		return
+	}
+
 	graph := initRandomGraph(nodesCount)
 	fmt.Print(numWorkers, " CPU\n")
 	constructAllRoutingTables(&graph)
