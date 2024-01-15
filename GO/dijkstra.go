@@ -49,6 +49,7 @@ const (
 
 var numWorkers = runtime.NumCPU()
 var waitGroup sync.WaitGroup
+var ackReceived = 0
 
 // ****		FONCTION CRÉATION GRAPHE ALÉATOIRE ****//
 func initRandomGraph(nodesCount int) Graph {
@@ -110,24 +111,11 @@ func hello(nodeSrc *Node, nodeDst *Node) {
 	waitGroup.Done()
 }
 
-func trafficInitializing(g Graph) {
-	for nodeNumber := 0; nodeNumber < len(g.Nodes); nodeNumber++ {
-		waitGroup.Add(1)
-		nodeSrc := g.Nodes[nodeNumber]
-		nodeDst := g.Nodes[rand.Intn(len(g.Nodes))]
-		for nodeDst == nodeSrc {
-			nodeDst = g.Nodes[rand.Intn(len(g.Nodes))]
-		}
-		go hello(nodeSrc, nodeDst)
-	}
-	waitGroup.Wait()
-}
-
 func processMessages(g *Graph, node *Node) { //je rajoute graph pour appeler la fct qui recalcule dijkstra
 	for {
 		select {
 		case message := <-node.Channel:
-			fmt.Printf("Le nœud %s a reçu le message '%s' destiné au nœud %s\n", node.Name, message.Content, message.Destination.Name)
+			// fmt.Printf("Le nœud %s a reçu le message '%s' destiné au nœud %s\n", node.Name, message.Content, message.Destination.Name)
 
 			// Actions selon le message reçu
 			switch message.Content {
@@ -147,27 +135,20 @@ func processMessages(g *Graph, node *Node) { //je rajoute graph pour appeler la 
 }
 
 func routing(node *Node, received Message) {
-	fmt.Print("qqchose\n")
+
 	if received.Destination == node && received.Content == "Hello" {
 		helloAckMessage := Message{Source: received.Destination, Destination: received.Source, Content: "Hello Ack"}
 		nodeDst := node.RoutingTable[received.Source.Name]["next_hop"]
-		// fmt.Print("AA\n")
-		// messRcv := <-nodeDst.Channel
-		// fmt.Print("A\n")
-		// routing(nodeDst, messRcv)
-
 		sendMessage(nodeDst.Channel, helloAckMessage)
-		fmt.Print("helloAck envoyé depuis", node.Name, " vers ", received.Source.Name, "\n")
+		fmt.Print("helloAck envoyé depuis ", node.Name, " vers ", received.Source.Name, "\n")
+
+	} else if received.Destination == node && received.Content == "Hello Ack" {
+		ackReceived++
+		fmt.Print(node.Name, " a reçu un message 'Hello Ack' : liaison établie entre les noeuds ", node.Name, " et ", received.Source.Name, "\n")
+
 	} else if received.Destination != node {
 		nodeDst := node.RoutingTable[received.Source.Name]["next_hop"]
-		// fmt.Print("BB\n")
-
-		// messRcv := <-nodeDst.Channel
-		// fmt.Print("B\n")
-		// routing(nodeDst, messRcv)
-
 		sendMessage(nodeDst.Channel, received)
-		fmt.Print("message routé\n")
 	}
 }
 
@@ -331,6 +312,10 @@ func main() {
 		go hello(nodeSrc, nodeDst)
 
 	}
+	waitGroup.Add(1)
+	for ackReceived < nodesCount {
+	}
+	waitGroup.Done()
 	waitGroup.Wait()
 
 	closeChan(graph)
