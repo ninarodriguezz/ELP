@@ -358,11 +358,22 @@ func main() {
 	waitGroup.Done()
 	waitGroup.Wait()
 
-	nodeA := graph.Nodes[0]
-	nodeB := nodeA.Edges[0].To
+	var num1, num2 int
+	fmt.Printf("Veuillez saisir un numéro de routeur : ")
+	fmt.Scanln(num1)
+	fmt.Printf("\nVoici les voisins du routeur choisi :\n")
+	nodeA := graph.Nodes[num1-1]
+
+	for _, edge := range nodeA.Edges {
+		fmt.Print(edge.To.Name, " - ")
+	}
+	fmt.Printf("\n\nVeuillez choisir le numéro d'un routeur voisin de %s :", nodeA.Name)
+	fmt.Scanln(num2)
+	nodeB := graph.Nodes[num2-1]
+
 	link_details := LinkInfo{NodeA: nodeA, NodeB: nodeB}
 	link_failure := Message{Source: nodeA, Destination: graph.Nodes[nodesCount-1], Content: "link no longer available", LinkDetails: link_details}
-	waitGroup.Add(2)
+	// waitGroup.Add(2)
 	go sendMessage(graph.Nodes[nodesCount-1].Channel, link_failure)
 	go processMessages(&graph, graph.Nodes[nodesCount-1])
 	waitGroup.Wait()
