@@ -551,8 +551,8 @@ func main() {
 		} else if commande == 4 {
 			break
 		} else {
-			var dummy string
-			fmt.Scanln(&dummy)
+			var dummy string  // Variable pour vider le buffer
+			fmt.Scanln(&dummy)  // On lit s'il reste quelque chose dans le buffer
 			fmt.Print("\nSaisie incorrecte.\nVeillez à entrer 1, 2, 3 ou 4\n")
 
 
