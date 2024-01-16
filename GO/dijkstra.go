@@ -98,15 +98,28 @@ func initRandomGraph(nodesCount int, maxEdgesPerNode int) Graph {
 		// Determiner aléatoirement la quantité d'Edges que le node aura (n entre minEdgesPerNode et maxEdgesPerNode)
 		edgesCount := rand.Intn(maxEdgesPerNode-minEdgesPerNode+1) + minEdgesPerNode
 		if len(node.Edges) < edgesCount {
-			for j := 0; j < edgesCount; j++ {
+			for j := len(node.Edges); j < edgesCount; j++ {
 				// Choisir un node aléatoire
 				otherNode := nodes[rand.Intn(nodesCount)]
-
-				// Tester si le lien existe déjà et éviter un lien avec lui-même
+				
+				count := 0 // Counter pour éviter une boucle infinie, si on ne trouve pas un node disponible après n/2 essais, on arrete les random 
+				
+				// Tester si le lien existe déjà et éviter un lien avec lui-même ou avec un routeur qui a toutes les intérfaces occupées
 				for node == otherNode || edgeExists(node, otherNode) || len(otherNode.Edges) >= maxEdgesPerNode {
 					otherNode = nodes[rand.Intn(nodesCount)]
-				}
+					count += 1 
+					if count > nodesCount/2 && len(node.Edges) >= minEdgesPerNode {   //quand on a déjà essayé n/2 fois on arrête de chercher un noeud random 
+						break  
+					} else if count > nodesCount/2 && len(node.Edges) < minEdgesPerNode {
+						for _, otherNode = range nodes {
+							if len(otherNode.Edges)> minEdgesPerNode+1 {
+								otherNode.Edges[0].To = node
+							}
+						}
 
+					}
+
+				}
 				// Creer le lien dans les deux sens
 				edge := &Edge{To: otherNode, Weight: rand.Intn(weightRange) + 1}
 				node.Edges = append(node.Edges, edge)
@@ -178,7 +191,7 @@ func hello(nodeSrc *Node, nodeDst *Node) {
 	helloWG.Done()
 }
 
-func processMessages(g *Graph, node *Node) { //je rajoute graph pour appeler la fct qui recalcule dijkstra
+func processMessages(g *Graph, node *Node) { 
 	/*
 		processMessages écoute en permanence les messages provenant du canal du nœud spécifié en paramètre
 		et effectue des actions en conséquence selon du contenu du message.
@@ -213,8 +226,6 @@ func processMessages(g *Graph, node *Node) { //je rajoute graph pour appeler la 
 			case "new link available":
 				waitGroup.Done()
 				addLinkAndRecalculate(g, message.LinkDetails)
-			default:
-				fmt.Printf("Message de type inconnu: %s\n", message.Content)
 			}
 
 		}
@@ -491,24 +502,24 @@ func main() {
 	/*Docstring*/
 
 	//Création du graphe et des tables de routage pour chaque noeud
-	fmt.Print("Quelle est la taille n du graphe ? (minimum n = 10) \nn = ")
+	fmt.Print("Quelle est la taille N du graphe ? (minimum N = 10) \nN = ")
 	_, err := fmt.Scanln(&nodesCount)
 	if err != nil {
 		fmt.Println("Error reading input:", err)
 		return
 	}
 	if nodesCount < 10 {
-		fmt.Println("Invalid input. Size 'n' should be an integer bigger than 10.")
+		fmt.Println("Invalid input. N doit être un entier supérieur à 10.")
 		return
 	}
-	fmt.Print("Combien d'interfaces a chaque routeur ? (minimum i = 2) \ni = ")
+	fmt.Print("Combien d'interfaces a chaque routeur ? (minimum i = 3) \ni = ")
 	_, err = fmt.Scanln(&maxEdges)
 	if err != nil {
 		fmt.Println("Error reading input:", err)
 		return
 	}
 	if maxEdges < 2 {
-		fmt.Println("Invalid input. Size 'n' should be an integer bigger than 2.")
+		fmt.Println("Invalid input. 'i' doit être supérieur à 2.")
 		return
 	}
 	graph := initRandomGraph(nodesCount, maxEdges)
@@ -553,7 +564,7 @@ func main() {
 	for {
 
 		var commande int
-		fmt.Print("\n1 - Pour ajouter un lien au graphe.\n2 - Pour supprimer un lien existant.\n3 - Pour initier du traffic dans le grapghe actuel.\n4 - Pour fermer tous les canaux de communication.\nCommande 1, 2, 3 ou 4 : ")
+		fmt.Print("\n1 - Pour ajouter un lien au graphe.\n2 - Pour supprimer un lien existant.\n3 - Pour initier du traffic dans le graphe actuel.\n 4 - Pour initier du traffic entre deux routeurs.\n5 - Pour fermer tous les canaux de communication.\nCommande 1, 2, 3, 4 ou 5 : ")
 		fmt.Scanln(&commande)
 
 		if commande == 1 {
@@ -642,7 +653,10 @@ func main() {
 			//soit quand tous les messages Hello et Hello Ack ont fini d'être routés
 			helloWG.Wait()
 			time.Sleep(2 * time.Second)
-		} else if commande == 4 {
+		}else if commande == 4 { 
+
+		}
+		} else if commande == 5 {
 			break
 		} else {
 			var dummyInt int
@@ -653,7 +667,6 @@ func main() {
 
 		}
 	}
-
 	closeChan(graph)
 
 }
