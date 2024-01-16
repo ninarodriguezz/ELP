@@ -34,6 +34,7 @@ type Message struct {
 	Source      *Node
 	Destination *Node
 	Content     string
+	Route       map[*Node]struct{}
 	LinkDetails LinkInfo //info contenue dans les messages pour informer qu'on a perdu ou établi un nouveau lien
 }
 
@@ -170,7 +171,9 @@ func hello(nodeSrc *Node, nodeDst *Node) {
 		La fonction ne retourne rien.
 	*/
 	channel := nodeSrc.RoutingTable[nodeDst.Name]["next_hop"].Channel
-	helloMessage := Message{Source: nodeSrc, Destination: nodeDst, Content: "Hello"}
+	route := make(map[*Node]struct{})
+	route[nodeSrc] = struct{}{}
+	helloMessage := Message{Source: nodeSrc, Destination: nodeDst, Content: "Hello", Route: route}
 	sendMessage(channel, helloMessage)
 	// fmt.Print("Message Hello envoyé depuis ", nodeSrc.Name, " à destination de ", nodeDst.Name, "\n")
 	helloWG.Done()
@@ -220,16 +223,35 @@ func processMessages(g *Graph, node *Node) { //je rajoute graph pour appeler la 
 }
 
 func routing(node *Node, received Message) {
-	/*Docstring*/
+	/*
+			 	routing traite le message reçu (de type Hello ou Hello Ack) en fonction du nœud actuel et
+				du contenu du message.
+
+		 		Paramètres :
+		   			- node : Le nœud actuel qui traite le message
+		   			- received : Le message reçu à traiter
+
+		 		La fonction examine le contenu du message et le traite selon sa destination et son contenu.
+				Si le message est de type "Hello" et est destiné au nœud actuel, un message "Hello Ack" est
+				envoyé à la source du message initial. Si le message est de type "Hello Ack" et est destiné
+				au nœud actuel, un message est affiché indiquant l'établissement de la liaison entre les nœuds.
+				Pour un message (peu importe son type) qui n'est pas destiné au noeud actuel, le message est
+				transmis au prochain saut déterminé par la table de routage.
+	*/
+
+	received.Route[node] = struct{}{}
+
 	if received.Destination == node && received.Content == "Hello" {
-		// fmt.Print("Hello reçu par ", node.Name, " de la part de ", received.Source.Name, "\n")
-		helloAckMessage := Message{Source: received.Destination, Destination: received.Source, Content: "Hello Ack"}
+		// fmt.Print("Hello reçu par ", node.Name, " de la part de ", received.Source.Name, " -- Route: ", afficherRoute(received.Route), "\n")
+		route := make(map[*Node]struct{})
+		route[node] = struct{}{}
+		helloAckMessage := Message{Source: received.Destination, Destination: received.Source, Content: "Hello Ack", Route: route}
 		nodeDst := node.RoutingTable[received.Source.Name]["next_hop"]
 		sendMessage(nodeDst.Channel, helloAckMessage)
 		// fmt.Print("helloAck envoyé depuis ", node.Name, " vers ", received.Source.Name, "\n")
 
 	} else if received.Destination == node && received.Content == "Hello Ack" {
-		fmt.Print(node.Name, " a reçu un message 'Hello Ack' : liaison établie entre les noeuds ", node.Name, " et ", received.Source.Name, "\n")
+		fmt.Print(node.Name, " a reçu un message 'Hello Ack' : liaison établie entre les noeuds ", node.Name, " et ", received.Source.Name, "\nRoute : ", afficherRoute(received.Route), "\n")
 		ackReceived++
 	} else if received.Destination != node {
 		nodeDst := node.RoutingTable[received.Destination.Name]["next_hop"]
@@ -237,8 +259,29 @@ func routing(node *Node, received Message) {
 	}
 }
 
+func afficherRoute(route map[*Node]struct{}) string {
+	var toPrint string
+	for node := range route {
+		toPrint += " " + node.Name + " "
+	}
+	return toPrint
+}
+
 func removeLinkAndRecalculate(g *Graph, linkinfo LinkInfo) {
-	/*Docstring*/
+	/*
+		removeLinkAndRecalculate supprime le lien entre deux nœuds dans le graphe
+		et recalcule les tables de routage de tous les nœuds du graphe.
+
+		Paramètres :
+		   - g : Le graphe global contenant l'ensemble des nœuds et des liens
+		   - linkinfo : Les informations sur le lien à supprimer, dont les nœuds reliés par ce lien
+
+		La fonction recherche le lien entre nodeA et nodeB dans les listes d'arêtes des deux
+		nœuds et le supprime. Ensuite, la fonction appelle la fonction constructAllRoutingTables
+		pour recalculer les tables de routage de tous
+		les nœuds du graphe, en prenant en compte la suppression du lien. Enfin, la fonction
+		décrémente le compteur de la goroutine de groupe (sync.WaitGroup).
+	*/
 	nodeA := linkinfo.NodeA
 	nodeB := linkinfo.NodeB
 	for i, edge := range nodeA.Edges {
