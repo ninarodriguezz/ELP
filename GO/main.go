@@ -488,15 +488,15 @@ func constructAllRoutingTables(graph *Graph) {
 	*/
 	start := time.Now()
 
-	// Crear un canal para asignar trabajos a goroutines
+	// Création du canal pour assigner les tâches aux goroutines
 	jobs := make(chan *Node, nodesCount)
 
-	// Iniciar goroutines para construir tablas de enrutamiento
+	// Initialisation des goroutines pour construire les tables de routage
 	for i := 0; i < numWorkers; i++ {
 		go constructRoutingTablesWorker(jobs, graph)
 	}
 
-	// Asignar trabajos a las goroutines
+	// Assigner les tâches aux goroutines
 	for _, node := range graph.Nodes {
 		dijWaitGroup.Add(1)
 		jobs <- node
