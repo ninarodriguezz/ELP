@@ -436,7 +436,7 @@ func minDist(unvisited map[*Node]struct{}, distances map[*Node]int) *Node {
 			- distances : Une map contenant les distances minimales actuelles pour chaque nœud
 
 		Retourne :
-			- Le nœud non visité ayant la distance minimale, ou nil si la map est vide.
+			- Le nœud non visité ayant la distance minimale, ou nil si la map est vide
 	*/
 	min := 1<<31 - 1
 	var n *Node
@@ -450,7 +450,20 @@ func minDist(unvisited map[*Node]struct{}, distances map[*Node]int) *Node {
 }
 
 func constructRoutingTablesWorker(jobs <-chan *Node, graph *Graph) {
-	/*Docstring*/
+	/*
+		constructRoutingTablesWorker utilise l'algorithme de Dijkstra pour calculer les tables de
+		routage de tous les noeuds du graphe entré en paramètre.
+
+		Paramètres :
+			- jobs : Un canal (channel) fournissant les nœuds à traiter avec l'algorithme de Dijkstra
+			- graph : Le graphe global contenant l'ensemble des nœuds
+
+		La fonction reçoit des nœuds à partir du canal "jobs" et applique l'algorithme de Dijkstra
+		à chaque nœud pour calculer les tables de routage correspondantes. La goroutine décrémente
+		le compteur du WaitGroup dijWaitGroup après chaque exécution de l'algorithme sur un nœud.
+
+		La fonction ne retourne rien.
+	*/
 	for node := range jobs {
 		Dijkstra(graph, node)
 		dijWaitGroup.Done()
@@ -458,7 +471,21 @@ func constructRoutingTablesWorker(jobs <-chan *Node, graph *Graph) {
 }
 
 func constructAllRoutingTables(graph *Graph) {
-	/*Docstring*/
+	/*
+			constructAllRoutingTables crée les tables de routage de tous les nœuds dans le graphe
+		 	en utilisant plusieurs goroutines pour accélérer le processus.
+
+		 	Paramètres :
+		   		- graph : Le graphe global contenant l'ensemble des nœuds
+
+		 	La fonction utilise plusieurs goroutines pour appliquer simultanément l'algorithme de Dijkstra
+			à chaque nœud du graphe, afin de calculer les tables de routage correspondantes. Elle utilise un
+		 	canal pour assigner des travaux aux goroutines, puis attend que toutes les goroutines aient
+		 	terminé leur travail avant de fournir le temps écoulé depuis le début de la création des tables
+		 	de routage.
+
+			Le fonction ne retourne rien.
+	*/
 	start := time.Now()
 
 	// Crear un canal para asignar trabajos a goroutines
@@ -485,7 +512,16 @@ func constructAllRoutingTables(graph *Graph) {
 //****		FERMETURE DE TOUS LES CHANNELS		****//
 
 func closeChan(g Graph) {
-	/*Docstring*/
+	/*
+		closeChan ferme les canaux de communication associés à chaque nœud dans le graphe.
+
+		Paramètres :
+			- g : Le graphe global contenant l'ensemble des nœuds
+
+		La fonction itère sur tous les nœuds du graphe et ferme leur canal de communication,
+		en utilisant des goroutines pour accélérer le processus. Elle utilise un WaitGroup closeWaitGroup
+		pour attendre que toutes les goroutines aient terminé avant de retourner.
+	*/
 	for nodeNum := 0; nodeNum < nodesCount; nodeNum++ {
 		closeWaitGroup.Add(1)
 		go func(node *Node) {
@@ -500,7 +536,17 @@ func closeChan(g Graph) {
 // **** 		FONCTION MAIN		 ****/
 
 func main() {
-	/*Docstring*/
+	/*
+		main est la fonction principale du programme qui simule un réseau de routeurs
+		et teste la communication entre eux en utilisant l'algorithme de Dijkstra pour
+		construire les tables de routage.
+
+		L'utilisateur est invité à définir la taille du graphe, le nombre d'interfaces
+		par routeur, et peut ensuite effectuer différentes actions telles que l'ajout ou
+		la suppression de liens, l'initiation de trafic entre tous les routeurs,
+		l'initialisation de trafic entre deux routeurs au choix ou encore
+		la fermeture de tous les canaux de communication.
+	*/
 
 	//Création du graphe et des tables de routage pour chaque noeud
 	fmt.Print("Quelle est la taille N du graphe ? (minimum N = 10) \nN = ")
@@ -705,13 +751,3 @@ func main() {
 	closeChan(graph)
 
 }
-
-/*
-
-// Affichage table de routage pour chaque noeud
-for _, start := range graph.Nodes {
-	fmt.Println("\nDistances les plus courtes du noeud", start.Name)
-	for dest, route := range start.RoutingTable {
-		fmt.Print(start.Name, " -> ", dest, " : ", route["next_hop"].Name, "\n")
-	}
-} */
