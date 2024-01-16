@@ -114,6 +114,7 @@ func initRandomGraph(nodesCount int, maxEdgesPerNode int) Graph {
 						for _, otherNode = range nodes {
 							if len(otherNode.Edges)> minEdgesPerNode+1 {
 								otherNode.Edges[0].To = node
+								break
 							}
 						}
 
@@ -564,7 +565,7 @@ func main() {
 	for {
 
 		var commande int
-		fmt.Print("\n1 - Pour ajouter un lien au graphe.\n2 - Pour supprimer un lien existant.\n3 - Pour initier du traffic dans le graphe actuel.\n 4 - Pour initier du traffic entre deux routeurs.\n5 - Pour fermer tous les canaux de communication.\nCommande 1, 2, 3, 4 ou 5 : ")
+		fmt.Print("\n1 - Pour ajouter un lien au graphe.\n2 - Pour supprimer un lien existant.\n3 - Pour initier du traffic dans le graphe actuel.\n4 - Pour initier du traffic entre deux routeurs.\n5 - Pour fermer tous les canaux de communication.\nCommande 1, 2, 3, 4 ou 5 : ")
 		fmt.Scanln(&commande)
 
 		if commande == 1 {
@@ -653,9 +654,7 @@ func main() {
 			//soit quand tous les messages Hello et Hello Ack ont fini d'être routés
 			helloWG.Wait()
 			time.Sleep(2 * time.Second)
-		}else if commande == 4 { 
 
-		}
 		} else if commande == 5 {
 			break
 		} else {
