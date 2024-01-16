@@ -80,7 +80,7 @@ func initRandomGraph(nodesCount int, maxEdgesPerNode int) Graph {
 	for _, node := range nodes {
 		// Determiner aléatoirement la quantité d'Edges que le node aura (n entre minEdgesPerNode et maxEdgesPerNode)
 		edgesCount := rand.Intn(maxEdgesPerNode-minEdgesPerNode+1) + minEdgesPerNode
-		if len(node.Edges) >= edgesCount {
+		if len(node.Edges) < edgesCount {
 			fmt.Print(len(node.Edges))
 			for j := 0; j < edgesCount; j++ {
 				// Choisir un node aléatoire
@@ -415,7 +415,7 @@ func main() {
 			for _, edge := range nodeA.Edges {
 				fmt.Print(edge.To.Name, " - ")
 			}
-			fmt.Printf("\n\nVeuillez choisir le numéro d'un routeur voisin de %s :\nR", nodeA.Name)
+			fmt.Printf("\n\nVeuillez choisir le numéro d'un routeur qui n'est pas voisin1 de %s :\nR", nodeA.Name)
 			fmt.Scanln(&num2)
 			for num2 < 1 || num2 > nodesCount {
 				fmt.Printf("Saisie non valide.\nVeuillez saisir un numéro de routeur : \nR")
