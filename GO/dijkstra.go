@@ -101,18 +101,18 @@ func initRandomGraph(nodesCount int, maxEdgesPerNode int) Graph {
 			for j := len(node.Edges); j < edgesCount; j++ {
 				// Choisir un node aléatoire
 				otherNode := nodes[rand.Intn(nodesCount)]
-				
-				count := 0 // Counter pour éviter une boucle infinie, si on ne trouve pas un node disponible après n/2 essais, on arrete les random 
-				
+
+				count := 0 // Counter pour éviter une boucle infinie, si on ne trouve pas un node disponible après n/2 essais, on arrete les random
+
 				// Tester si le lien existe déjà et éviter un lien avec lui-même ou avec un routeur qui a toutes les intérfaces occupées
 				for node == otherNode || edgeExists(node, otherNode) || len(otherNode.Edges) >= maxEdgesPerNode {
 					otherNode = nodes[rand.Intn(nodesCount)]
-					count += 1 
-					if count > nodesCount/2 && len(node.Edges) >= minEdgesPerNode {   //quand on a déjà essayé n/2 fois on arrête de chercher un noeud random 
-						break  
+					count += 1
+					if count > nodesCount/2 && len(node.Edges) >= minEdgesPerNode { //quand on a déjà essayé n/2 fois on arrête de chercher un noeud random
+						break
 					} else if count > nodesCount/2 && len(node.Edges) < minEdgesPerNode {
 						for _, otherNode = range nodes {
-							if len(otherNode.Edges)> minEdgesPerNode+1 {
+							if len(otherNode.Edges) > minEdgesPerNode+1 {
 								otherNode.Edges[0].To = node
 							}
 						}
@@ -191,7 +191,7 @@ func hello(nodeSrc *Node, nodeDst *Node) {
 	helloWG.Done()
 }
 
-func processMessages(g *Graph, node *Node) { 
+func processMessages(g *Graph, node *Node) {
 	/*
 		processMessages écoute en permanence les messages provenant du canal du nœud spécifié en paramètre
 		et effectue des actions en conséquence selon du contenu du message.
@@ -582,7 +582,7 @@ func main() {
 			for _, edge := range nodeA.Edges {
 				fmt.Print(edge.To.Name, " - ")
 			}
-			fmt.Printf("\n\nVeuillez choisir le numéro d'un routeur qui n'est pas voisin1 de %s :\nR", nodeA.Name)
+			fmt.Printf("\n\nVeuillez choisir le numéro d'un routeur qui n'est pas voisin de %s :\nR", nodeA.Name)
 			fmt.Scanln(&num2)
 			for num2 < 1 || num2 > nodesCount {
 				fmt.Printf("Saisie non valide.\nVeuillez saisir un numéro de routeur : \nR")
@@ -602,8 +602,8 @@ func main() {
 			var num1, num2 int
 			fmt.Printf("\n\n\nVeuillez saisir un numéro de routeur : \nR")
 			fmt.Scanln(&num1)
-			for num1 < 1 || num1 > nodesCount {
-				fmt.Printf("Saisie non valide.\nVeuillez saisir un numéro de routeur : \nR")
+			for num1 < 1 || num1 > nodesCount || len(graph.Nodes[num1-1].Edges) == maxEdges {
+				fmt.Printf("Saisie non valide. Le routeur n'existe pas ou ses interfaces sont déjà complètes.\nVeuillez saisir un numéro de routeur : \nR")
 				fmt.Scanln(&num1)
 			}
 			fmt.Printf("\nVoici les voisins du routeur choisi :\n- ")
@@ -614,7 +614,7 @@ func main() {
 			}
 			fmt.Printf("\n\nVeuillez choisir le numéro d'un routeur voisin de %s :\nR", nodeA.Name)
 			fmt.Scanln(&num2)
-			for num2 < 1 || num2 > nodesCount {
+			for num2 < 1 || num2 > nodesCount || len(graph.Nodes[num1-1].Edges) == maxEdges {
 				fmt.Printf("Saisie non valide.\nVeuillez saisir un numéro de routeur : \nR")
 				fmt.Scanln(&num2)
 			}
@@ -653,9 +653,43 @@ func main() {
 			//soit quand tous les messages Hello et Hello Ack ont fini d'être routés
 			helloWG.Wait()
 			time.Sleep(2 * time.Second)
-		}else if commande == 4 { 
 
-		}
+		} else if commande == 4 {
+			var num1, num2 int
+			fmt.Printf("\n\n\nVeuillez saisir un numéro de routeur : \nR")
+			fmt.Scanln(&num1)
+			for num1 < 1 || num1 > nodesCount {
+				fmt.Printf("Saisie non valide.\nVeuillez saisir un numéro de routeur : \nR")
+				fmt.Scanln(&num1)
+			}
+			nodeA := graph.Nodes[num1-1]
+
+			fmt.Printf("\n\nVeuillez choisir le numéro d'un autre routeur :\nR")
+			fmt.Scanln(&num2)
+			for num2 < 1 || num2 > nodesCount || num2 == num1 {
+				fmt.Printf("Saisie non valide.\nVeuillez saisir un numéro de routeur : \nR")
+				fmt.Scanln(&num2)
+			}
+			nodeB := graph.Nodes[num2-1]
+
+			for nodeNumber := 0; nodeNumber < nodesCount; nodeNumber++ {
+
+				nodeSrc := graph.Nodes[nodeNumber]
+				go processMessages(&graph, nodeSrc)
+
+			}
+			helloWG.Add(2)
+			go hello(nodeA, nodeB)
+			//Incrémentation du wait group pour toutes les goroutines processMessages
+			//On attend que tous les noeuds aient reçu le message Hello Ack pour décrémenter le wait group
+			for ackReceived < 1 {
+			}
+			helloWG.Done()
+			//Se décrémente quand ackReceived s'est incrémenté jusqu'à atteindre nodesCount,
+			//soit quand tous les messages Hello et Hello Ack ont fini d'être routés
+			helloWG.Wait()
+			time.Sleep(2 * time.Second)
+
 		} else if commande == 5 {
 			break
 		} else {
