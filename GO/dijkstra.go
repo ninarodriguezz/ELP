@@ -97,7 +97,6 @@ func initRandomGraph(nodesCount int, maxEdgesPerNode int) Graph {
 		// Determiner aléatoirement la quantité d'Edges que le node aura (n entre minEdgesPerNode et maxEdgesPerNode)
 		edgesCount := rand.Intn(maxEdgesPerNode-minEdgesPerNode+1) + minEdgesPerNode
 		if len(node.Edges) < edgesCount {
-			fmt.Print(len(node.Edges))
 			for j := 0; j < edgesCount; j++ {
 				// Choisir un node aléatoire
 				otherNode := nodes[rand.Intn(nodesCount)]
@@ -404,7 +403,7 @@ func main() {
 		fmt.Println("Error reading input:", err)
 		return
 	}
-	if nodesCount <= 10 {
+	if nodesCount < 10 {
 		fmt.Println("Invalid input. Size 'n' should be an integer bigger than 10.")
 		return
 	}
@@ -460,7 +459,7 @@ func main() {
 	for {
 
 		var commande int
-		fmt.Print("\nPour ajouter un lien au graphe, entrer 1.\nPour supprimer un lien existant, entrer 2.\nPour initier du traffic dans le grapghe actuel, entrer 3.\nPour fermer tous les canaux de communication, entrer 4.\nCommande 1, 2, 3 ou 4 : ")
+		fmt.Print("\n1 - Pour ajouter un lien au graphe.\n2 - Pour supprimer un lien existant.\n3 - Pour initier du traffic dans le grapghe actuel.\n4 - Pour fermer tous les canaux de communication.\nCommande 1, 2, 3 ou 4 : ")
 		fmt.Scanln(&commande)
 
 		if commande == 1 {
@@ -552,7 +551,11 @@ func main() {
 		} else if commande == 4 {
 			break
 		} else {
-			fmt.Print("\nVeillez à entrer 1, 2, 3 ou 4\n")
+			var dummy string
+			fmt.Scanln(&dummy)
+			fmt.Print("\nSaisie incorrecte.\nVeillez à entrer 1, 2, 3 ou 4\n")
+
+
 		}
 	}
 
