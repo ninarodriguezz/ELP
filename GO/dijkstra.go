@@ -86,7 +86,7 @@ func initRandomGraph(nodesCount int) Graph {
 			otherNode := nodes[rand.Intn(nodesCount)]
 
 			// Tester si le lien existe déjà et éviter un lien avec lui-même
-			for node == otherNode || edgeExists(node, otherNode) {
+			for node == otherNode || edgeExists(node, otherNode) || len(otherNode.Edges) >= maxEdgesPerNode {
 				otherNode = nodes[rand.Intn(nodesCount)]
 			}
 
@@ -381,6 +381,22 @@ func main() {
 	//soit quand tous les messages Hello et Hello Ack ont fini d'être routés
 	helloWG.Wait()
 
+<<<<<<< HEAD
+	var num1, num2 int
+	fmt.Printf("Veuillez saisir un numéro de routeur : ")
+	fmt.Scanln(&num1)
+	num1 = 2
+
+	fmt.Printf("\nVoici les voisins du routeur choisi :\n")
+	nodeA := graph.Nodes[num1-1]
+
+	for _, edge := range nodeA.Edges {
+		fmt.Print(edge.To.Name, " - ")
+	}
+	fmt.Printf("\n\nVeuillez choisir le numéro d'un routeur voisin de %s :", nodeA.Name)
+	fmt.Scanln(&num2)
+	nodeB := graph.Nodes[num2-1]
+=======
 	//Boucle infinie pour que l'utilisateur puisse agir sur le graphe:
 	//ajout ou suppression de liens, fermeture de tous les canaux
 	for {
@@ -388,6 +404,7 @@ func main() {
 		var commande int
 		fmt.Print("\nPour ajouter un lien au graphe, entrer 1.\nPour supprimer un lien existant, entrer 2.\nPour initier du traffic dans le grapghe actuel, entrer 3.\nPour fermer tous les canaux de communication, entrer 4.\nCommande 1, 2, 3 ou 4 : ")
 		fmt.Scanln(&commande)
+>>>>>>> 12a5d3e5fd704ce998133027abed90cf270b6a6d
 
 		if commande == 1 {
 			//Ajout d'un lien
