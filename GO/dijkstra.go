@@ -97,13 +97,27 @@ func initRandomGraph(nodesCount int, maxEdgesPerNode int) Graph {
 		// Determiner aléatoirement la quantité d'Edges que le node aura (n entre minEdgesPerNode et maxEdgesPerNode)
 		edgesCount := rand.Intn(maxEdgesPerNode-minEdgesPerNode+1) + minEdgesPerNode
 		if len(node.Edges) < edgesCount {
-			for j := 0; j < edgesCount; j++ {
+			for j := len(node.Edges); j < edgesCount; j++ {
 				// Choisir un node aléatoire
 				otherNode := nodes[rand.Intn(nodesCount)]
-
-				// Tester si le lien existe déjà et éviter un lien avec lui-même
+				
+				count := 0 // Counter pour éviter une boucle infinie, si on ne trouve pas un node disponible après n/2 essais, on arrete les random 
+				
+				// Tester si le lien existe déjà et éviter un lien avec lui-même ou avec un routeur qui a toutes les intérfaces occupées
 				for node == otherNode || edgeExists(node, otherNode) || len(otherNode.Edges) >= maxEdgesPerNode {
 					otherNode = nodes[rand.Intn(nodesCount)]
+					count += 1 
+					if count > nodesCount/2 && len(node.Edges) >= minEdgesPerNode {   //quand on a déjà essayé n/2 fois on arrête de chercher un noeud random 
+						break  
+					} else if count > nodesCount/2 && len(node.Edges) < minEdgesPerNode {
+						for _, otherNode = range nodes {
+							if len(otherNode.Edges)> minEdgesPerNode+1 {
+								otherNode.Edges[0].To = node
+							}
+						}
+
+					}
+
 				}
 
 				// Creer le lien dans les deux sens
@@ -175,7 +189,7 @@ func hello(nodeSrc *Node, nodeDst *Node) {
 	helloWG.Done()
 }
 
-func processMessages(g *Graph, node *Node) { //je rajoute graph pour appeler la fct qui recalcule dijkstra
+func processMessages(g *Graph, node *Node) { 
 	/*
 		processMessages écoute en permanence les messages provenant du canal du nœud spécifié en paramètre
 		et effectue des actions en conséquence selon du contenu du message.
@@ -555,10 +569,8 @@ func main() {
 			fmt.Scanln(&dummy)  // On lit s'il reste quelque chose dans le buffer
 			fmt.Print("\nSaisie incorrecte.\nVeillez à entrer 1, 2, 3 ou 4\n")
 
-
 		}
 	}
-
 	closeChan(graph)
 
 }
