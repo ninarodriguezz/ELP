@@ -473,6 +473,7 @@ func main() {
 			//Se décrémente quand ackReceived s'est incrémenté jusqu'à atteindre nodesCount,
 			//soit quand tous les messages Hello et Hello Ack ont fini d'être routés
 			helloWG.Wait()
+			time.Sleep(2 * time.Second)
 		} else if commande == 4 {
 			break
 		} else {
