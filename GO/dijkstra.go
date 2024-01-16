@@ -46,7 +46,7 @@ type LinkInfo struct {
 
 // Définition des caracteristiques du graphe
 const (
-	minEdgesPerNode = 2 //au moins deux pour s'assurer qu'un node n'est pas isolé, probabilité de configuration de trois noeuds en triangle negligé :P
+	minEdgesPerNode = 2  //au moins deux pour s'assurer qu'un node n'est pas isolé, probabilité de configuration de trois noeuds en triangle negligé :P
 	weightRange     = 20 //poids max des edges
 )
 
@@ -58,11 +58,27 @@ var helloWG sync.WaitGroup
 var closeWaitGroup sync.WaitGroup
 var ackReceived = 0
 var nodesCount int
-var maxEdges int 
+var maxEdges int
+
 // **** CRÉATION GRAPHE ALÉATOIRE ****//
 
 func initRandomGraph(nodesCount int, maxEdgesPerNode int) Graph {
-	/*Docstring*/
+	/*
+		initRandomGraph initialise et retourne un graphe aléatoire caractérisé par les paramètres de la fonction.
+
+		Paramètres :
+			- nodesCount : le nombre de nœuds dans le graphe
+			- maxEdgesPerNode : le nombre maximal d'arêtes par nœud
+
+		La fonctioneffectue un tirage aléatoire basé sur le temps pour garantir une séquence
+		aléatoire différente à chaque exécution du code. Les nœuds du graphe sont créés avec des
+		canaux de messages associés et des noms distincts (R + numéro). Les liens entre les nœuds
+		sont établis de manière aléatoire, en évitant les doublons et les liens avec eux-mêmes (arête boucle).
+
+		Retourne :
+			- Un objet Graph représentant le graphe initialisé
+
+	*/
 
 	rand.Seed(time.Now().UnixNano())
 	//permet d'obtenir une séquence aléatoire differente à chaque execution du code,
@@ -87,7 +103,7 @@ func initRandomGraph(nodesCount int, maxEdgesPerNode int) Graph {
 				otherNode := nodes[rand.Intn(nodesCount)]
 
 				// Tester si le lien existe déjà et éviter un lien avec lui-même
-				for node == otherNode || edgeExists(node, otherNode) || len(otherNode.Edges)>= maxEdgesPerNode{
+				for node == otherNode || edgeExists(node, otherNode) || len(otherNode.Edges) >= maxEdgesPerNode {
 					otherNode = nodes[rand.Intn(nodesCount)]
 				}
 
@@ -102,9 +118,17 @@ func initRandomGraph(nodesCount int, maxEdgesPerNode int) Graph {
 	return Graph{Nodes: nodes}
 }
 
-// Fct qui verifie si le lien existe déjà
 func edgeExists(nodeA, nodeB *Node) bool {
-	/*Docstring*/
+	/*
+		edgeExists verifie si le lien défini par les noeuds en paramètre existe déjà
+
+		Paramètres :
+			- nodeA : noeud à une extrémité du lien
+			- nodeB : noeud à l'autre extrémité
+
+		Retourne :
+			- Un booléen true si le lien existe, false sinon
+	*/
 	for _, edge := range nodeA.Edges {
 		if edge.To == nodeB {
 			return true
@@ -116,12 +140,35 @@ func edgeExists(nodeA, nodeB *Node) bool {
 //**** TRANSMITION DE MESSAGES	****//
 
 func sendMessage(messageChan chan Message, messageEnvoye Message) {
-	/*Docstring*/
+	/*
+		sendMessage envoie un message dans un canal de communication.
+
+		Paramètres :
+			- messageChan : canal de communication dans lequel est envoyé le message
+			- messageEnvoyé : message à envoyer dans le canal de communication
+
+		La fonction ne retourne rien.
+	*/
 	messageChan <- messageEnvoye
 }
 
 func hello(nodeSrc *Node, nodeDst *Node) {
-	/*Docstring*/
+	/*
+		hello envoie un message de type "Hello" du nœud source au nœud destination.
+
+		Paramètres :
+			- nodeSrc : Le nœud source à partir duquel le message "Hello" est envoyé.
+			- nodeDst : Le nœud destination auquel le message "Hello" est adressé.
+
+		La fonction utilise la table de routage du nœud source pour déterminer le canal de communication
+		du noeud correspondant au prochain saut vers le nœud destination. Elle crée ensuite un message de type
+		"Hello" avec le nœud source comme émetteur et le nœud destination comme destinataire, puis envoie
+		ce message sur le canal spécifié.
+
+		Une fois l'envoi terminé, helloWG.Done() est appelé pour décrémenter le compteur du WaitGroup helloWG.
+
+		La fonction ne retourne rien.
+	*/
 	channel := nodeSrc.RoutingTable[nodeDst.Name]["next_hop"].Channel
 	helloMessage := Message{Source: nodeSrc, Destination: nodeDst, Content: "Hello"}
 	sendMessage(channel, helloMessage)
@@ -130,7 +177,23 @@ func hello(nodeSrc *Node, nodeDst *Node) {
 }
 
 func processMessages(g *Graph, node *Node) { //je rajoute graph pour appeler la fct qui recalcule dijkstra
-	/*Docstring*/
+	/*
+		processMessages écoute en permanence les messages provenant du canal du nœud spécifié en paramètre
+		et effectue des actions en conséquence selon du contenu du message.
+
+		Paramètres :
+
+			- g : Le graphe global contenant l'ensemble des nœuds
+			- node : Le nœud actuel pour lequel les messages sont traités
+
+		La fonction utilise une boucle infinie pour écouter les messages du canal du nœud en permanence.
+		Lorsqu'un message est reçu, la fonction effectue des actions dépendantes du type de message reçu.
+		La fonction prend en charge les messages de type "Hello", "Hello Ack", "link no longer available",
+		et "new link available". Pour chaque type de message, la fonction fait appel des fonctions spécifiques
+		pour traiter le message.
+
+		La fonction ne retourne rien.
+	*/
 	for {
 		select {
 		case message := <-node.Channel:
@@ -341,7 +404,7 @@ func main() {
 		fmt.Println("Error reading input:", err)
 		return
 	}
-	if nodesCount <= 0 {
+	if nodesCount <= 10 {
 		fmt.Println("Invalid input. Size 'n' should be an integer bigger than 10.")
 		return
 	}
@@ -351,7 +414,7 @@ func main() {
 		fmt.Println("Error reading input:", err)
 		return
 	}
-	if nodesCount <= 0 {
+	if maxEdges < 2 {
 		fmt.Println("Invalid input. Size 'n' should be an integer bigger than 2.")
 		return
 	}
