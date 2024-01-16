@@ -309,7 +309,7 @@ func constructAllRoutingTables(graph *Graph) {
 
 	// Esperar a que todas las goroutines completen
 	dijWaitGroup.Wait()
-	fmt.Printf("\nTables de routage créés en %v\n\n,", time.Since(start))
+	fmt.Printf("\nTables de routage créés en %v\n\n", time.Since(start))
 }
 
 //****		FERMETURE DE TOUS LES CHANNELS		****//
@@ -386,7 +386,7 @@ func main() {
 	for {
 
 		var commande int
-		fmt.Print("\nPour ajouter un lien au graphe, entrer 1.\nPour supprimer un lien existant, entrer 2.\nPour fermer tous les canaux de communication, entrer 3.\nCommande 1, 2 ou 3 : ")
+		fmt.Print("\nPour ajouter un lien au graphe, entrer 1.\nPour supprimer un lien existant, entrer 2.\nPour initier du traffic dans le grapghe actuel, entrer 3.\nPour fermer tous les canaux de communication, entrer 4.\nCommande 1, 2, 3 ou 4 : ")
 		fmt.Scanln(&commande)
 
 		if commande == 1 {
@@ -450,9 +450,34 @@ func main() {
 			waitGroup.Wait()
 
 		} else if commande == 3 {
+			//Lancement des goroutines sur chaque noeud pour process les messages reçu
+			//et envoyer un Hello Message à un noeud aléatoire
+			for nodeNumber := 0; nodeNumber < nodesCount; nodeNumber++ {
+				helloWG.Add(1) //Incrémentation du wait group pour la goroutine hello
+
+				nodeSrc := graph.Nodes[nodeNumber]
+				go processMessages(&graph, nodeSrc)
+
+				nodeDst := graph.Nodes[rand.Intn(nodesCount)]
+				for nodeDst == nodeSrc {
+					nodeDst = graph.Nodes[rand.Intn(nodesCount)]
+				}
+				go hello(nodeSrc, nodeDst)
+
+			}
+			helloWG.Add(1)
+			//Incrémentation du wait group pour toutes les goroutines processMessages
+			//On attend que tous les noeuds aient reçu le message Hello Ack pour décrémenter le wait group
+			for ackReceived < nodesCount {
+			}
+			helloWG.Done()
+			//Se décrémente quand ackReceived s'est incrémenté jusqu'à atteindre nodesCount,
+			//soit quand tous les messages Hello et Hello Ack ont fini d'être routés
+			helloWG.Wait()
+		} else if commande == 4 {
 			break
 		} else {
-			fmt.Print("\nVeillez à entrer 1, 2 ou 3\n")
+			fmt.Print("\nVeillez à entrer 1, 2, 3 ou 4\n")
 		}
 	}
 
