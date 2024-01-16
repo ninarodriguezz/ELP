@@ -119,7 +119,6 @@ func initRandomGraph(nodesCount int, maxEdgesPerNode int) Graph {
 					}
 
 				}
-
 				// Creer le lien dans les deux sens
 				edge := &Edge{To: otherNode, Weight: rand.Intn(weightRange) + 1}
 				node.Edges = append(node.Edges, edge)
@@ -224,8 +223,6 @@ func processMessages(g *Graph, node *Node) {
 			case "new link available":
 				waitGroup.Done()
 				addLinkAndRecalculate(g, message.LinkDetails)
-			default:
-				fmt.Printf("Message de type inconnu: %s\n", message.Content)
 			}
 
 		}
@@ -411,24 +408,24 @@ func main() {
 	/*Docstring*/
 
 	//Création du graphe et des tables de routage pour chaque noeud
-	fmt.Print("Quelle est la taille n du graphe ? (minimum n = 10) \nn = ")
+	fmt.Print("Quelle est la taille N du graphe ? (minimum N = 10) \nN = ")
 	_, err := fmt.Scanln(&nodesCount)
 	if err != nil {
 		fmt.Println("Error reading input:", err)
 		return
 	}
 	if nodesCount < 10 {
-		fmt.Println("Invalid input. Size 'n' should be an integer bigger than 10.")
+		fmt.Println("Invalid input. N doit être un entier supérieur à 10.")
 		return
 	}
-	fmt.Print("Combien d'interfaces a chaque routeur ? (minimum i = 2) \ni = ")
+	fmt.Print("Combien d'interfaces a chaque routeur ? (minimum i = 3) \ni = ")
 	_, err = fmt.Scanln(&maxEdges)
 	if err != nil {
 		fmt.Println("Error reading input:", err)
 		return
 	}
 	if maxEdges < 2 {
-		fmt.Println("Invalid input. Size 'n' should be an integer bigger than 2.")
+		fmt.Println("Invalid input. 'i' doit être supérieur à 2.")
 		return
 	}
 	graph := initRandomGraph(nodesCount, maxEdges)
@@ -473,7 +470,7 @@ func main() {
 	for {
 
 		var commande int
-		fmt.Print("\n1 - Pour ajouter un lien au graphe.\n2 - Pour supprimer un lien existant.\n3 - Pour initier du traffic dans le grapghe actuel.\n4 - Pour fermer tous les canaux de communication.\nCommande 1, 2, 3 ou 4 : ")
+		fmt.Print("\n1 - Pour ajouter un lien au graphe.\n2 - Pour supprimer un lien existant.\n3 - Pour initier du traffic dans le graphe actuel.\n 4 - Pour initier du traffic entre deux routeurs.\n5 - Pour fermer tous les canaux de communication.\nCommande 1, 2, 3, 4 ou 5 : ")
 		fmt.Scanln(&commande)
 
 		if commande == 1 {
@@ -562,7 +559,10 @@ func main() {
 			//soit quand tous les messages Hello et Hello Ack ont fini d'être routés
 			helloWG.Wait()
 			time.Sleep(2 * time.Second)
-		} else if commande == 4 {
+		}else if commande == 4 { 
+
+		}
+		} else if commande == 5 {
 			break
 		} else {
 			var dummy string  // Variable pour vider le buffer
