@@ -259,6 +259,17 @@ func routing(node *Node, received Message) {
 }
 
 func afficherRoute(route map[*Node]struct{}) string {
+	/*
+			afficherRoute crée une représentation sous forme de chaîne de caractères
+			d'une route spécifiée, en utilisant les noms des nœuds dans l'ordre de la route.
+
+			Paramètre :
+		   		- route : La map représentant la route, avec les nœuds comme clés
+
+		   	Retourne :
+		   		- Une chaîne de caractères représentant la route
+
+	*/
 	var toPrint string
 	for node := range route {
 		toPrint += " " + node.Name + " "
@@ -272,14 +283,15 @@ func removeLinkAndRecalculate(g *Graph, linkinfo LinkInfo) {
 		et recalcule les tables de routage de tous les nœuds du graphe.
 
 		Paramètres :
-		   - g : Le graphe global contenant l'ensemble des nœuds et des liens
+		   - g : Le graphe global contenant l'ensemble des nœuds
 		   - linkinfo : Les informations sur le lien à supprimer, dont les nœuds reliés par ce lien
 
 		La fonction recherche le lien entre nodeA et nodeB dans les listes d'arêtes des deux
 		nœuds et le supprime. Ensuite, la fonction appelle la fonction constructAllRoutingTables
-		pour recalculer les tables de routage de tous
-		les nœuds du graphe, en prenant en compte la suppression du lien. Enfin, la fonction
-		décrémente le compteur de la goroutine de groupe (sync.WaitGroup).
+		pour recalculer les tables de routage de tous les nœuds du graphe, en prenant en compte
+		la suppression du lien. Enfin, la fonction décrémente le compteur de WaitGroup.
+
+		La fonction ne retourne rien.
 	*/
 	nodeA := linkinfo.NodeA
 	nodeB := linkinfo.NodeB
@@ -301,7 +313,22 @@ func removeLinkAndRecalculate(g *Graph, linkinfo LinkInfo) {
 }
 
 func addLinkAndRecalculate(g *Graph, linkinfo LinkInfo) {
-	/*Docstring*/
+	/*
+		addLinkAndRecalculate ajoute un lien entre deux nœuds dans le graphe,
+		et recalcule les tables de routage de tous les nœuds du graphe.
+
+		Paramètres :
+			- g : Le graphe global contenant l'ensemble des nœuds
+			- linkinfo : Les informations sur le lien à ajouter, dont les noeuds reliés par ce lien
+
+		La fonction vérifie d'abord si le lien entre nodeA et nodeB existe déjà. Si le lien
+		n'existe pas, un nouvel Edge est créé pour chaque nœud et ajouté à leur liste d'arêtes.
+		Ensuite, la fonction appelle la fonction constructAllRoutingTables pour recalculer les
+		tables de routage de tous les nœuds du graphe, en prenant en compte l'ajout du nouveau lien.
+		Enfin, la fonction décrémente le compteur du WaitGroup.
+
+		La fonction ne retourne rien.
+	*/
 	nodeA := linkinfo.NodeA
 	nodeB := linkinfo.NodeB
 	// j'ai besoin du poids pour créer le nouveau Edge, je le met dans la classe LinkInfo ou je fais comment?
@@ -333,7 +360,22 @@ func addLinkAndRecalculate(g *Graph, linkinfo LinkInfo) {
 // **** 		FONCTIONS CONSTRUCTION TABLES DE ROUTAGE		****//
 
 func Dijkstra(g *Graph, start *Node) {
-	/*Docstring*/
+	/*
+			Dijkstra applique l'algorithme de Dijkstra pour calculer les tables de routage
+			à partir d'un nœud de départ dans le graphe entré en paramètre.
+
+			Paramètres :
+		   		- g : Le graphe global contenant l'ensemble des nœuds et des liens
+		   		- start : Le nœud de départ à partir duquel l'algorithme de Dijkstra est lancé
+
+			La fonction utilise l'algorithme de Dijkstra pour calculer les distances minimales
+			entre le nœud de départ et tous les autres nœuds du graphe. Elle construit ensuite
+			la table de routage du nœud de départ en utilisant les résultats de l'algorithme.
+			Les tables de routage indiquent le prochain nœud (next_hop) sur le chemin le plus
+			court vers chaque destination.
+
+			La fonction ne retourne rien.
+	*/
 	unvisited := make(map[*Node]struct{})
 	distances := make(map[*Node]int)
 	next_hop := make(map[*Node]*Node)
@@ -374,7 +416,16 @@ func Dijkstra(g *Graph, start *Node) {
 }
 
 func minDist(unvisited map[*Node]struct{}, distances map[*Node]int) *Node {
-	/*Docstring*/
+	/*
+		minDist retourne le nœud non visité ayant la distance minimale dans la map de distances.
+
+		Paramètres :
+			- unvisited : Une map contenant les nœuds non visités
+			- distances : Une map contenant les distances minimales actuelles pour chaque nœud
+
+		Retourne :
+			- Le nœud non visité ayant la distance minimale, ou nil si la map est vide.
+	*/
 	min := 1<<31 - 1
 	var n *Node
 	for node := range unvisited {
@@ -594,10 +645,11 @@ func main() {
 		} else if commande == 4 {
 			break
 		} else {
-			var dummy string  // Variable pour vider le buffer
-			fmt.Scanln(&dummy)  // On lit s'il reste quelque chose dans le buffer
+			var dummyInt int
+			var dummyStr string   // Variable pour vider le buffer
+			fmt.Scanln(&dummyInt) // On lit s'il reste quelque chose dans le buffer
+			fmt.Scanln(&dummyStr)
 			fmt.Print("\nSaisie incorrecte.\nVeillez à entrer 1, 2, 3 ou 4\n")
-
 
 		}
 	}
