@@ -47,7 +47,6 @@ type LinkInfo struct {
 // Définition des caracteristiques du graphe
 const (
 	minEdgesPerNode = 2 //au moins deux pour s'assurer qu'un node n'est pas isolé, probabilité de configuration de trois noeuds en triangle negligé :P
-	maxEdgesPerNode = 3
 	weightRange     = 20 //poids max des edges
 )
 
@@ -59,10 +58,10 @@ var helloWG sync.WaitGroup
 var closeWaitGroup sync.WaitGroup
 var ackReceived = 0
 var nodesCount int
-
+var maxEdges int 
 // **** CRÉATION GRAPHE ALÉATOIRE ****//
 
-func initRandomGraph(nodesCount int) Graph {
+func initRandomGraph(nodesCount int, maxEdgesPerNode int) Graph {
 	/*Docstring*/
 
 	rand.Seed(time.Now().UnixNano())
@@ -71,6 +70,7 @@ func initRandomGraph(nodesCount int) Graph {
 
 	// On appelle les nodes R + num comme ça il y a pas de confusion avec les poids et on a inf possibilités
 	nodes := make([]*Node, nodesCount)
+
 	for i := 0; i < nodesCount; i++ {
 		channel := make(chan Message)
 		nodes[i] = &Node{Name: fmt.Sprintf("R%d", i+1), Channel: channel}
@@ -80,20 +80,22 @@ func initRandomGraph(nodesCount int) Graph {
 	for _, node := range nodes {
 		// Determiner aléatoirement la quantité d'Edges que le node aura (n entre minEdgesPerNode et maxEdgesPerNode)
 		edgesCount := rand.Intn(maxEdgesPerNode-minEdgesPerNode+1) + minEdgesPerNode
+		if len(node.Edges) >= edgesCount {
+			fmt.Print(len(node.Edges))
+			for j := 0; j < edgesCount; j++ {
+				// Choisir un node aléatoire
+				otherNode := nodes[rand.Intn(nodesCount)]
 
-		for j := 0; j < edgesCount; j++ {
-			// Choisir un node aléatoire
-			otherNode := nodes[rand.Intn(nodesCount)]
+				// Tester si le lien existe déjà et éviter un lien avec lui-même
+				for node == otherNode || edgeExists(node, otherNode) || len(otherNode.Edges)>= maxEdgesPerNode{
+					otherNode = nodes[rand.Intn(nodesCount)]
+				}
 
-			// Tester si le lien existe déjà et éviter un lien avec lui-même
-			for node == otherNode || edgeExists(node, otherNode) || len(otherNode.Edges) >= maxEdgesPerNode {
-				otherNode = nodes[rand.Intn(nodesCount)]
+				// Creer le lien dans les deux sens
+				edge := &Edge{To: otherNode, Weight: rand.Intn(weightRange) + 1}
+				node.Edges = append(node.Edges, edge)
+				otherNode.Edges = append(otherNode.Edges, &Edge{To: node, Weight: edge.Weight})
 			}
-
-			// Creer le lien dans les deux sens
-			edge := &Edge{To: otherNode, Weight: rand.Intn(weightRange) + 1}
-			node.Edges = append(node.Edges, edge)
-			otherNode.Edges = append(otherNode.Edges, &Edge{To: node, Weight: edge.Weight})
 		}
 	}
 
@@ -340,11 +342,20 @@ func main() {
 		return
 	}
 	if nodesCount <= 0 {
-		fmt.Println("Invalid input. Size 'n' should be a positive integer.")
+		fmt.Println("Invalid input. Size 'n' should be an integer bigger than 10.")
 		return
 	}
-
-	graph := initRandomGraph(nodesCount)
+	fmt.Print("Combien d'interfaces a chaque routeur ? (minimum i = 2) \ni = ")
+	_, err = fmt.Scanln(&maxEdges)
+	if err != nil {
+		fmt.Println("Error reading input:", err)
+		return
+	}
+	if nodesCount <= 0 {
+		fmt.Println("Invalid input. Size 'n' should be an integer bigger than 2.")
+		return
+	}
+	graph := initRandomGraph(nodesCount, maxEdges)
 	fmt.Print(numWorkers, " CPU\n")
 	constructAllRoutingTables(&graph)
 
@@ -381,22 +392,6 @@ func main() {
 	//soit quand tous les messages Hello et Hello Ack ont fini d'être routés
 	helloWG.Wait()
 
-<<<<<<< HEAD
-	var num1, num2 int
-	fmt.Printf("Veuillez saisir un numéro de routeur : ")
-	fmt.Scanln(&num1)
-	num1 = 2
-
-	fmt.Printf("\nVoici les voisins du routeur choisi :\n")
-	nodeA := graph.Nodes[num1-1]
-
-	for _, edge := range nodeA.Edges {
-		fmt.Print(edge.To.Name, " - ")
-	}
-	fmt.Printf("\n\nVeuillez choisir le numéro d'un routeur voisin de %s :", nodeA.Name)
-	fmt.Scanln(&num2)
-	nodeB := graph.Nodes[num2-1]
-=======
 	//Boucle infinie pour que l'utilisateur puisse agir sur le graphe:
 	//ajout ou suppression de liens, fermeture de tous les canaux
 	for {
@@ -404,7 +399,6 @@ func main() {
 		var commande int
 		fmt.Print("\nPour ajouter un lien au graphe, entrer 1.\nPour supprimer un lien existant, entrer 2.\nPour fermer tous les canaux de communication, entrer 3.\nCommande 1, 2 ou 3 : ")
 		fmt.Scanln(&commande)
->>>>>>> 12a5d3e5fd704ce998133027abed90cf270b6a6d
 
 		if commande == 1 {
 			//Ajout d'un lien
