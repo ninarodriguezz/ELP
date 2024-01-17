@@ -132,7 +132,7 @@ func initRandomGraph(nodesCount int, maxEdgesPerNode int) Graph {
 	return Graph{Nodes: nodes}
 }
 
-func edgeExists(nodeA, nodeB *Node) bool {
+func edgeExists(nodeA *Node, nodeB *Node) bool {
 	/*
 		edgeExists verifie si le lien défini par les noeuds en paramètre existe déjà
 
@@ -506,7 +506,7 @@ func constructAllRoutingTables(graph *Graph) {
 
 	// Esperar a que todas las goroutines completen
 	dijWaitGroup.Wait()
-	fmt.Printf("\nTables de routage créés en %v\n\n", time.Since(start))
+	fmt.Printf("\nTables de routage créés en %v.\n\n", time.Since(start))
 }
 
 //****		FERMETURE DE TOUS LES CHANNELS		****//
@@ -521,16 +521,41 @@ func closeChan(g Graph) {
 		La fonction itère sur tous les nœuds du graphe et ferme leur canal de communication,
 		en utilisant des goroutines pour accélérer le processus. Elle utilise un WaitGroup closeWaitGroup
 		pour attendre que toutes les goroutines aient terminé avant de retourner.
+
+		La fonction ne retourne rien.
 	*/
-	for nodeNum := 0; nodeNum < nodesCount; nodeNum++ {
-		closeWaitGroup.Add(1)
-		go func(node *Node) {
-			defer closeWaitGroup.Done()
-			close(node.Channel)
-		}(g.Nodes[nodeNum])
+	start := time.Now()
+
+	jobs := make(chan *Node, nodesCount)
+
+	for i := 0; i < numWorkers; i++ {
+		go closeChanWorker(jobs)
 	}
 
+	for _, node := range g.Nodes {
+		closeWaitGroup.Add(1)
+		jobs <- node
+	}
+
+	close(jobs)
 	closeWaitGroup.Wait()
+	fmt.Printf("\n\nCanaux de communication fermés en %v.\n\n", time.Since(start))
+}
+
+func closeChanWorker(jobs <-chan *Node) {
+	/*
+		closeChanWorker ferme les canaux des noeuds reçus par le canal jobs.
+
+		Paramètres :
+			- jobs : Le canal de communication qui reçoit les noeuds dont le canal doit être fermé
+
+		La fonction ne retourne rien.
+	*/
+
+	for node := range jobs {
+		close(node.Channel)
+		closeWaitGroup.Done()
+	}
 }
 
 // **** 		FONCTION MAIN		 ****/
