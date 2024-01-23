@@ -9,6 +9,7 @@ import Html exposing (Html, text, pre, div)
 import Http
 import Random
 import List exposing (drop)
+import Json.Decode exposing (..)
 
 
 
@@ -32,6 +33,9 @@ type Model
   = Failure
   | Loading
   | Success String
+  | FullText String
+  | Word String
+  | Def String
 
 
 init : () -> (Model, Cmd Msg)
@@ -51,6 +55,8 @@ init _ =
 type Msg
   = GotText (Result Http.Error String)
   | RandomInt Int
+  | GotDef (Result Http.Error String)
+
 
 
 getWordAtIndex : Int -> List String -> String
@@ -66,16 +72,30 @@ update msg model =
     GotText result ->
       case result of
         Ok fullText ->
-          (Success fullText, Random.generate RandomInt (Random.int 0 (List.length (String.words fullText))))  
-
+          (FullText fullText, Random.generate RandomInt (Random.int 0 (List.length (String.words fullText))))  
         Err _ ->
           (Failure, Cmd.none)
 
+    GotDef result ->
+      case result of
+        Ok def ->
+          (Def def, Cmd.none)
+        Err _ ->  
+          (Failure, Cmd.none)
+
     RandomInt number -> case model of
-      Success text -> (Success (getWordAtIndex number (String.words text)), Cmd.none)   
+      FullText text -> (Word (getWordAtIndex number (String.words text)), Random.generate RandomInt (Random.int 0 10))  
+      Word word -> ( Loading
+        , Http.get
+            { url = "https://api.dictionaryapi.dev/api/v2/entries/en/" ++ word
+            , expect = Http.expectString GotDef
+            }
+        )
       Failure -> (model, Cmd.none)
       Loading -> (model, Cmd.none)
-
+      Success text -> (model, Cmd.none)
+      Def text -> (model, Cmd.none)
+    
 
 
 -- SUBSCRIPTIONS
@@ -99,5 +119,14 @@ view model =
     Loading ->
       text "Loading..."
 
-    Success fullText ->
-      pre [] [ text fullText ]
+    Success texte ->
+      pre [] [ text texte ]
+
+    Word word ->
+      pre [] [text word]
+
+    FullText texte ->
+      pre [] [text texte]  
+
+    Def texte ->
+      pre [] [text texte]  
