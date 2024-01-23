@@ -7,6 +7,8 @@
 import Browser
 import Html exposing (Html, text, pre, div)
 import Http
+import Random
+import List exposing (drop)
 
 
 
@@ -36,7 +38,7 @@ init : () -> (Model, Cmd Msg)
 init _ =
   ( Loading
   , Http.get
-      { url = "https://perso.liris.cnrs.fr/tristan.roussillon/GuessIt/thousand_words_things_explainer.txt"
+      { url = "https://raw.githubusercontent.com/ninarodriguezz/ELP/main/ELM/thousand_words_things_explainer.txt"
       , expect = Http.expectString GotText
       }
   )
@@ -48,6 +50,14 @@ init _ =
 
 type Msg
   = GotText (Result Http.Error String)
+  | RandomInt Int
+
+
+getWordAtIndex : Int -> List String -> String
+getWordAtIndex index input =
+    case drop (index-1) input of
+      (x::xs) -> x
+      [] -> "err"
 
 
 update : Msg -> Model -> (Model, Cmd Msg)
@@ -56,10 +66,15 @@ update msg model =
     GotText result ->
       case result of
         Ok fullText ->
-          (Success fullText, Cmd.none)
+          (Success fullText, Random.generate RandomInt (Random.int 0 (List.length (String.words fullText))))  
 
         Err _ ->
           (Failure, Cmd.none)
+
+    RandomInt number -> case model of
+      Success text -> (Success (getWordAtIndex number (String.words text)), Cmd.none)   
+      Failure -> (model, Cmd.none)
+      Loading -> (model, Cmd.none)
 
 
 
