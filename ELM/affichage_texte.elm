@@ -56,6 +56,7 @@ type Msg
   = GotText (Result Http.Error String)
   | RandomInt Int
   | GotDef (Result Http.Error String)
+  | GotWord
 
 
 
@@ -84,7 +85,7 @@ update msg model =
           (Failure, Cmd.none)
 
     RandomInt number -> case model of
-      FullText text -> (Word (getWordAtIndex number (String.words text)), Random.generate RandomInt (Random.int 0 10))  
+      FullText text -> (Word (getWordAtIndex number (String.words text)), GotWord)  
       Word word -> ( Loading
         , Http.get
             { url = "https://api.dictionaryapi.dev/api/v2/entries/en/" ++ word
