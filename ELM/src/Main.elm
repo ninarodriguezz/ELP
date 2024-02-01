@@ -1,16 +1,12 @@
--- Make a GET request to load a book called "Public Opinion"
---
--- Read how it works:
---   https://guide.elm-lang.org/effects/http.html
---
+module Main exposing (..)
+
 
 import Browser
-import Html exposing (Html, text, pre, div)
-import Http
+import Html exposing (..)
+import Http 
 import Random
 import List exposing (drop)
-import Json.Decode exposing (..)
-import DecoderFile exposing (..)
+import Decoder exposing (..)
 
 
 
@@ -67,6 +63,14 @@ getWordAtIndex index input =
       [] -> "err"
 
 
+getJson : String -> Cmd Msg
+getJson word = 
+  Http.get
+    { url = "https://api.dictionaryapi.dev/api/v2/entries/en/" ++ word
+    , expect = Http.expectJson GotJson decoderJson
+    }      
+
+
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
   case msg of
@@ -111,6 +115,25 @@ subscriptions model =
 
 view : Model -> Html Msg
 view model =
+  let 
+    viewDef def =
+      li [] [ text def ]
+
+    viewMeaning meaning = ul []
+      [ li [] 
+        [ text meaning.partOfSpeech
+        , pre [] []
+        , ol [] (List.map viewDef meaning.definition) 
+        , pre [] [ text " " ]
+        ]
+      ]
+
+    viewGame def = div []
+      [ h1 [] [ text "Guess the word Game" ]
+      , h3 [] [ text "Meanings :" ]
+      , ul [] (List.map viewMeaning def.definition)
+      ]
+  in
   case model of
     Failure ->
       text "I was unable to load your book."
@@ -119,25 +142,14 @@ view model =
       text "Loading..."
 
     Success texte ->
-      pre [] [text texte]
+      pre [] [ text texte ]
 
     Word word ->
-      pre [] [text word]
+      pre [] [ text word ]
 
     FullText texte ->
-      pre [] [text texte]  
+      pre [] [ text texte ]  
 
-    Def def ->
-      case def of
-        (x::xs) -> 
-          case xs of
-
-            [] -> div []
-              [ pre[] [text "Guess the word"]
-              , pre[] [text x.word]
-              ]
-
-            (y::ys) -> pre[] [text "error"]
-        [] -> pre[] [text "err"]    
-
-
+    Def def -> case def of
+      (x::_) -> viewGame x
+      [] -> pre [] [ text "error" ]

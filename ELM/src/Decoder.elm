@@ -1,4 +1,7 @@
--- HTTP
+module Decoder exposing (..)
+
+import Http
+import Json.Decode exposing (..)
 
 type alias Meaning =
     {partOfSpeech : String,
@@ -8,12 +11,6 @@ type alias Definition =
     { word : String
     , definition : List Meaning}    
 
-getJson : String -> Cmd Msg
-getJson word = 
-  Http.get
-    { url = "https://api.dictionaryapi.dev/api/v2/entries/en/" ++ word
-    , expect = Http.expectJson GotJson decoderJson
-    }
 
 decoderJson : Decoder (List Definition)
 decoderJson =
