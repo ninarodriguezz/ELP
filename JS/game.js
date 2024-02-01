@@ -215,26 +215,30 @@ function jarnac(player) {
 }
 
 // Function to check if a word is possible with the given letters
-function checkWord(letters, word) {
+function checkWord(letters, words, word, position) {
     // Create a copy of the letters array so we don't modify the original
+    let wordArray = word.split("");
     let lettersCopy = [...letters];
 
     for (let letter of word) {
-        console.log(`Current lettersCopy: ${lettersCopy}`);
-        let index = lettersCopy.indexOf(letter);
+        console.log(`Current lettersCopy: ${letters}`);
+        let index = letters.indexOf(letter);
+        console.log(`letter ${letter}, index ${index}`)
         if (index === -1) {
             // Letter not found in the array, or no more occurrences left, word is not possible
             console.log(`Letter ${letter} not found in lettersCopy. Word is not possible.`);
             return false;
         } else {
             // Remove only the first occurrence of the letter from the array
-            lettersCopy.splice(index, 1);
+            wordArray.splice(wordArray.indexOf(letter), 1);
+            lettersCopy.splice(index, 1)
         }
+        console.log(`wordArray ${wordArray}`)
+        console.log(lettersCopy)
     }
 
     // All letters found, word is possible only if there are no remaining occurrences of letters
-    console.log(`All letters found. Remaining lettersCopy: ${lettersCopy}`);
-    return lettersCopy.length === 0;
+    return wordArray.length === 0;
 }
 
 
