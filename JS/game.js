@@ -106,9 +106,8 @@ async function startGame(gameState) {
             required: true
         }]);
         if (jarnacResult.jarnac.toLowerCase() === 'yes') {
-            //call the function jarnac
-            jarnac(gameState.currentPlayer)
-
+            var otherPlayer = (gameState.currentPlayer + 1) % gameState.players.length;
+            await jarnac(gameState.players[gameState.currentPlayer], gameState.players[otherPlayer])
         }
 }
 }
@@ -162,17 +161,29 @@ async function playerTurn(player) {
 
     while (playAgain) {
         // Ask the player if they want to play a word or pass their turn
-        const actionResult = await get([{
-            name: 'action',
-            description: `${player.name}, do you want to play a word or pass your turn? (play/pass)`,
-            type: 'string',
-            required: true
-        }]);
+        let validAction = false;
 
-        if (actionResult.action.toLowerCase() === 'pass') {
-            console.log(`${player.name} has decided to pass their turn.`);
-            playAgain = false;
-            continue;
+        while (!validAction) {
+            const actionResult = await get([{
+                name: 'action',
+                description: `${player.name}, do you want to play a word or pass your turn? (play/pass)`,
+                type: 'string',
+                required: true
+            }]);
+
+            if (actionResult.action.toLowerCase() === 'pass') {
+                console.log(`${player.name} has decided to pass their turn.`);
+                playAgain = false;
+                validAction = true;
+            } else if (actionResult.action.toLowerCase() === 'play') {
+                validAction = true;
+            } else {
+                console.log('Invalid action. Please enter "play" or "pass".');
+            }
+        }
+
+        if (!playAgain) {
+            break
         }
 
         // Ask the player for a word and the position to play it
@@ -187,7 +198,7 @@ async function playerTurn(player) {
             type: 'number',
             required: true,
             conform: function(value) {
-                const maxPosition = player.words.length + 1;
+                var maxPosition = player.words.length + 1;
                 return value >= 1 && value <= maxPosition;
             },
             message: 'Position must be between 1 and ' + (player.words.length + 1)
@@ -215,29 +226,63 @@ async function playerTurn(player) {
 
         } else {
             console.log(`The word ${result.word} is not possible with the letters ${player.letters.join(', ')}.`);
-/*             playAgain = false;
-            await Promise.all([calculateScore(player), displayGameState()]); */
         }
     }
 }
-function jarnac(player) {
+async function jarnac(player, otherPlayer) {
     // Ask for the line number
-    let lineNumber = prompt("Enter the line number of the word you want to modify:");
+    const lineNumberResult = await get([{
+        name: 'lineNumber',
+        description: 'Enter the line number of the word you want to modify',
+        type: 'number',
+        required: true
+    }]);
 
-    // Convert the line number to an integer
-    lineNumber = parseInt(lineNumber, 10);
+    let lineNumber = lineNumberResult.lineNumber;
 
-    // Validate the line number
-    if (isNaN(lineNumber) || lineNumber < 1 || lineNumber > player.words.length) {
-        console.error("Invalid line number");
-        return;
+    while (isNaN(lineNumber) || lineNumber < 1 || lineNumber > otherPlayer.words.length) {
+        const lineNumberResult = await get([{
+            name: 'lineNumber',
+            description: 'Enter the line number of the word you want to modify',
+            type: 'number',
+            required: true
+        }]);
+
+        lineNumber = lineNumberResult.lineNumber;
+
+        if (isNaN(lineNumber) || lineNumber < 1 || lineNumber > otherPlayer.words.length) {
+            console.error("Invalid line number");
+        }
     }
 
     // Ask for the new word
-    let newWord = prompt("Enter the new word:");
+    const newWordResult = await get([{
+        name: 'newWord',
+        description: 'Enter the new word',
+        type: 'string',
+        required: true
+    }]);
 
-    // Replace the word at the given line number with the new word
-    player.words[lineNumber - 1] = newWord;
+    let newWord = newWordResult.newWord;
+    console.log(newWord, otherPlayer.words)
+
+    // Check if the new word is longer than the existing word
+    if (newWord.length <= otherPlayer.words[lineNumber - 1].length) {
+        console.error("The new word must be longer than the existing word");
+        return;
+    }
+
+    // Check if the word is possible
+    if (checkWord(otherPlayer.letters, otherPlayer.words, newWord, lineNumber)) {
+        // If the word is possible, make the move
+        const move = { word: newWord, position: lineNumber };
+        await makeMove(otherPlayer.name, move);
+
+        console.log(`${player.name} modified the word at line ${lineNumber} to ${newWord}.`);
+        console.log(`${otherPlayer.name}'s words are now: ${otherPlayer.words.join(', ')}`);
+    } else {
+        console.log(`The word ${newWord} is not possible with the letters ${otherPlayer.letters.join(', ')}.`);
+    }
 }
 
 // Function to check if a word is possible with the given letters
@@ -321,7 +366,7 @@ function calculateScore(player) {
 
 // Function to log a move to the game log file
 function logMove(playerName, move) {
-    const log = `${playerName} a joué le coup : ${move.word}\n`;
+    const log = `${playerName} played the word : ${move.word}\n`;
     return new Promise((resolve, reject) => {
         fs.appendFile(logFile, log, (err) => {
             if (err) reject(err);

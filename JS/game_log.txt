@@ -1,1 +1,2 @@
-a a joué le coup : BANG
+a a joué le coup : INT
+a a joué le coup : INTA

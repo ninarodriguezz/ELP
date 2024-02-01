@@ -1,8 +1,10 @@
 const prompt = require('prompt');
-const { start } = require('repl');
 const util = require('util');
 const fs = require('fs');
+const logFile = 'game_log.txt';
 
+
+// Use of fs.writeFile to clean the file content
 prompt.start();
 const get = util.promisify(prompt.get);
 
@@ -15,6 +17,16 @@ function onErr(err) {
     console.log(err);
     return 1;
 }
+
+function cleanFile() {
+    fs.writeFile(logFile, '', (err) => {
+        if (err) {
+        console.error(err);
+        return;
+        }
+    });
+}    
+
 function getPlayerName(playerNumber) {
     prompt.get([{
         name: 'playerName',
@@ -40,6 +52,8 @@ function getPlayerName(playerNumber) {
         }
     });
 }
+
+cleanFile();
 // Start by getting the first player's name
 getPlayerName(1);
 
@@ -91,8 +105,8 @@ async function startGame(gameState) {
             required: true
         }]);
         if (jarnacResult.jarnac.toLowerCase() === 'yes') {
-            //call the function jarnac
-            jarnac(gameState.currentPlayer)
+            var otherPlayer = (gameState.currentPlayer + 1) % gameState.player.length;
+            jarnac(gameState.currentPlayer, otherPlayer)
 
         }
 }
@@ -147,17 +161,25 @@ async function playerTurn(player) {
 
     while (playAgain) {
         // Ask the player if they want to play a word or pass their turn
-        const actionResult = await get([{
-            name: 'action',
-            description: `${player.name}, do you want to play a word or pass your turn? (play/pass)`,
-            type: 'string',
-            required: true
-        }]);
+        let validAction = false;
 
-        if (actionResult.action.toLowerCase() === 'pass') {
-            console.log(`${player.name} has decided to pass their turn.`);
-            playAgain = false;
-            continue;
+        while (!validAction) {
+            const actionResult = await get([{
+                name: 'action',
+                description: `${player.name}, do you want to play a word or pass your turn? (play/pass)`,
+                type: 'string',
+                required: true
+            }]);
+
+            if (actionResult.action.toLowerCase() === 'pass') {
+                console.log(`${player.name} has decided to pass their turn.`);
+                playAgain = false;
+                validAction = true;
+            } else if (actionResult.action.toLowerCase() === 'play') {
+                validAction = true;
+            } else {
+                console.log('Invalid action. Please enter "play" or "pass".');
+            }
         }
 
         // Ask the player for a word and the position to play it
@@ -204,36 +226,93 @@ async function playerTurn(player) {
     }
 }
 
-function jarnac(player) {
+async function jarnac(player, otherPlayer) {
     // Ask for the line number
-    let lineNumber = prompt("Enter the line number of the word you want to modify:");
+    const lineNumberResult = await get([{
+        name: 'lineNumber',
+        description: 'Enter the line number of the word you want to modify:',
+        type: 'number',
+        required: true
+    }]);
 
-    // Convert the line number to an integer
-    lineNumber = parseInt(lineNumber, 10);
+    let lineNumber = lineNumberResult.lineNumber;
 
-    // Validate the line number
-    if (isNaN(lineNumber) || lineNumber < 1 || lineNumber > player.words.length) {
-        console.error("Invalid line number");
-        return;
+    while (isNaN(lineNumber) || lineNumber < 1 || lineNumber > otherPlayer.words.length) {
+        const lineNumberResult = await get([{
+            name: 'lineNumber',
+            description: 'Enter the line number of the word you want to modify:',
+            type: 'number',
+            required: true
+        }]);
+
+        lineNumber = lineNumberResult.lineNumber;
+
+        if (isNaN(lineNumber) || lineNumber < 1 || lineNumber > otherPlayer.words.length) {
+            console.error("Invalid line number");
+        }
     }
 
     // Ask for the new word
-    let newWord = prompt("Enter the new word:");
+    const newWordResult = await get([{
+        name: 'newWord',
+        description: 'Enter the new word:',
+        type: 'string',
+        required: true
+    }]);
 
-    // Replace the word at the given line number with the new word
-    player.words[lineNumber - 1] = newWord;
+    let newWord = newWordResult.newWord;
+
+    // Check if the new word is longer than the existing word
+    if (newWord.length <= otherPlayer.words[lineNumber - 1].length) {
+        console.error("The new word must be longer than the existing word");
+        return;
+    }
+
+    // Check if the word is possible
+    if (checkWord(otherPlayer.letters, otherPlayer.words, newWord, lineNumber)) {
+        // If the word is possible, make the move
+        const move = { word: newWord, position: lineNumber };
+        await makeMove(otherPlayer.name, move);
+
+        console.log(`${player.name} modified the word at line ${lineNumber} to ${newWord}.`);
+        console.log(`${otherPlayer.name}'s words are now: ${otherPlayer.words.join(', ')}`);
+    } else {
+        console.log(`The word ${newWord} is not possible with the letters ${otherPlayer.letters.join(', ')}.`);
+    }
 }
-
 // Function to check if a word is possible with the given letters
 function checkWord(letters, words, word, position) {
     // Create a copy of the letters array so we don't modify the original
     let wordArray = word.split("");
     let lettersCopy = [...letters];
 
-    for (let letter of word) {
-        console.log(`Current lettersCopy: ${letters}`);
+    if (word.length < 3) {
+        console.log(`The word ${word} is too short to be played.`);
+        return false;
+    }
+
+    if (words.length > position) {
+        let initWord = words[position];
+        let initWordArray = initWord.split("");
+
+        for (let letter of initWord) {
+            let index = wordArray.indexOf(letter);
+            if (index === -1) {
+                // Letter not found in the array, or no more occurrences left, word is not possible
+                console.log(`Letter ${letter} not found in lettersCopy. Word is not possible.`);
+                return false;
+            } else {
+                // Remove only the first occurrence of the letter from the array
+                wordArray.splice(wordArray.indexOf(letter), 1);
+                initWordArray.splice(initWordArray.indexOf(letter), 1);
+            }
+        }
+    } 
+    
+    let wordArrayFixed = [...wordArray]
+     
+    for (let letter of wordArrayFixed) {
         let index = letters.indexOf(letter);
-        console.log(`letter ${letter}, index ${index}`)
         if (index === -1) {
             // Letter not found in the array, or no more occurrences left, word is not possible
             console.log(`Letter ${letter} not found in lettersCopy. Word is not possible.`);
@@ -241,17 +320,28 @@ function checkWord(letters, words, word, position) {
         } else {
             // Remove only the first occurrence of the letter from the array
             wordArray.splice(wordArray.indexOf(letter), 1);
-            lettersCopy.splice(index, 1)
+            lettersCopy.splice(lettersCopy.indexOf(letter), 1);
         }
-        console.log(`wordArray ${wordArray}`)
-        console.log(lettersCopy)
     }
 
     // All letters found, word is possible only if there are no remaining occurrences of letters
     return wordArray.length === 0;
 }
 
+function calculateScore(player) {
+    return new Promise((resolve, reject) => {
+        const points = [0, 0, 9, 16, 25, 36, 49, 64, 81];
+        let score = 0;
 
+        for (let word of player.words) {
+            const length = word.length;
+            score += points[length];
+        }
+
+        player.score = score;
+
+    });
+}
 
 
 function calculateScore(player) {
@@ -273,7 +363,7 @@ function calculateScore(player) {
 function logMove(playerName, move) {
     const log = `${playerName} a joué le coup : ${move.word}\n`;
     return new Promise((resolve, reject) => {
-        fs.appendFile('game_log.txt', log, (err) => {
+        fs.appendFile(logFile, log, (err) => {
             if (err) reject(err);
             else resolve();
         });
