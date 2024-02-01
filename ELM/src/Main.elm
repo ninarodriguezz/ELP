@@ -31,10 +31,10 @@ main =
 type Model
   = Failure
   | Loading
-  | Success String
   | FullText String
   | Word String
   | Def (List Definition)
+  | View { content : String, def : (List Definition) }
 
 
 init : () -> (Model, Cmd Msg)
@@ -101,26 +101,45 @@ update msg model =
         )
       Failure -> (model, Cmd.none)
       Loading -> (model, Cmd.none)
-      Success text -> (model, Cmd.none)
       Def text -> (model, Cmd.none)
+      View map -> (model, Cmd.none)
 
     CheckWord word -> 
       case model of
         Failure -> (model, Cmd.none)
         Loading -> (model, Cmd.none)
-        Success text -> (model, Cmd.none)
         FullText text -> (model, Cmd.none)
         Word text -> (model, Cmd.none)
+        View map -> case map.def of
+          (x::_) -> if x.word == word then 
+            ( View { content = "Guessed", def = map.def}, Cmd.none)
+            else 
+            (model, Cmd.none)
+          [] -> (model, Cmd.none)   
         Def def -> case def of
           (x::_) -> if x.word == word then 
-            ( Def (Definition "Guessed" [] :: def), Cmd.none)
+            ( View { content = "Guessed", def = def}, Cmd.none)
             else 
-            ( Def (Definition "Failed" [] :: def), Cmd.none)
+            (model, Cmd.none)
           [] -> (model, Cmd.none)  
 
-    ShowWord -> (model, Cmd.none)
-    HideWord -> (model, Cmd.none)      
-    
+    ShowWord -> 
+      case model of
+        Failure -> (model, Cmd.none)
+        Loading -> (model, Cmd.none)
+        FullText text -> (model, Cmd.none)
+        Word text -> (model, Cmd.none)
+        View map -> ( View { content = "Show", def = map.def}, Cmd.none)
+        Def def -> ( View { content = "Show", def = def}, Cmd.none) 
+
+    HideWord ->   
+      case model of
+        Failure -> (model, Cmd.none)
+        Loading -> (model, Cmd.none)
+        FullText text -> (model, Cmd.none)
+        Word text -> (model, Cmd.none)
+        View map -> ( View { content = "Hide", def = map.def}, Cmd.none)
+        Def def -> ( View { content = "Hide", def = def}, Cmd.none)
 
 
 -- SUBSCRIPTIONS
@@ -150,11 +169,11 @@ view model =
         ]
       ]
 
-    viewGame def = div []
-      [ h1 [] [ text "Guess the Word Game" ]
+    viewGame def = div [ style "margin" "20px" ]
+      [ h1 [] [ text "Guess the Word !" ]
       , h3 [] [ text "Meanings :" ]
       , ul [] (List.map viewMeaning def.definition)
-      , input [ placeholder "Enter a word",  onInput CheckWord ] []
+      , input [ placeholder "Enter a word", onInput CheckWord ] []
       , div [] 
         [ pre [] []
         , button [ onClick ShowWord ] [ text "Show Answer" ]
@@ -162,21 +181,26 @@ view model =
         ]
       ]
 
-    viewGuessed def = div []
-      [ h1 [] [ text "Guess the Word Game" ]
+    viewGuessed def = div [ style "margin" "20px" ]
+      [ h1 [] [ text "Guess the Word !" ]
       , h3 [] [ text "Meanings :" ]
       , ul [] (List.map viewMeaning def.definition)
-      , text ("Exactly ! The word to find was " ++ def.word ++ " !")
+      , text ("Exactly ! The word to guess was " ++ def.word ++ " !")
       ]
 
-    viewFailed def = div []
-      [ h1 [] [ text "Guess the Word Game" ]
+    viewWord def = div [  style "margin" "20px" ]
+      [ h1 [] [ text "Guess the Word !" ]
+      , h2 [] [ text ("The word to guess is : " ++ def.word) ]
       , h3 [] [ text "Meanings :" ]
       , ul [] (List.map viewMeaning def.definition)
-      , text "You failed to guess the word, you can try again."
-      , input [ placeholder "Enter a word", onInput CheckWord ] []
-      ]  
+      , div [] 
+        [ pre [] []
+        , button [ onClick ShowWord ] [ text "Show Answer" ]
+        , button [ onClick HideWord ] [ text "Hide Answer" ]
+        ]
+      ]
 
+ 
   in
   case model of
     Failure ->
@@ -184,9 +208,6 @@ view model =
 
     Loading ->
       text "Loading..."
-
-    Success texte ->
-      pre [] [ text texte ]
 
     Word word ->
       pre [] [ text word ]
@@ -196,4 +217,20 @@ view model =
 
     Def def -> case def of
       (x::_) -> viewGame x
-      [] -> pre[] [ text "error" ]
+      [] -> pre[] [ text "error1" ]
+
+    View map -> case map.content of
+
+      "Guessed" -> case map.def of
+        (x::_) -> viewGuessed x
+        [] -> pre[] [ text "error2" ]
+
+      "Show" -> case map.def of
+        (x::_) -> viewWord x
+        [] -> pre[] [ text "error3" ]
+
+      "Hide" -> case map.def of
+        (x::_) -> viewGame x
+        [] -> pre[] [ text "error4" ] 
+
+      _ -> pre[] [ text "error5" ]  
