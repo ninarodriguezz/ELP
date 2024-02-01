@@ -132,7 +132,7 @@ function determineWinner(gameState) {
     let winner = null;
 
     for (let player of gameState.players) {
-        let score = player.words.reduce((total, word) => total + Math.pow(word.length, 2), 0); 
+        let score = player.score; 
         if (score > highestScore) {
             highestScore = score;
             winner = player;
@@ -194,19 +194,12 @@ async function playerTurn(player) {
             console.log(`${player.name}'s words are now: ${player.words.join(', ')}`);
             console.log(`${player.name}'s letters are now: ${player.letters.join(', ')}`);
 
-/*             // Ask the player if they want to play again
-            const playAgainResult = await get([{
-                name: 'playAgain',
-                description: 'Do you want to play again? (yes/no)',
-                type: 'string',
-                required: true
-            }]);
+            // Calculate and display the score
+            await calculateScore(player);
+            await displayGameState();
 
-            playAgain = playAgainResult.playAgain.toLowerCase() === 'yes'; */
         } else {
             console.log(`The word ${result.word} is not possible with the letters ${player.letters.join(', ')}.`);
-/*             playAgain = false;
-            await Promise.all([calculateScore(player), displayGameState()]); */
         }
     }
 }
@@ -263,16 +256,16 @@ function checkWord(letters, words, word, position) {
 
 function calculateScore(player) {
     return new Promise((resolve, reject) => {
-        // TODO: Calculate the score based on the player's words and letters
-        // You can add your code here
+        const points = [0, 0, 9, 16, 25, 36, 49, 64, 81];
+        let score = 0;
 
-        // For example, let's assume the score is the total number of letters in the player's words
-        const score = player.words.reduce((total, word) => total + word.length, 0);
+        for (let word of player.words) {
+            const length = word.length;
+            score += points[length];
+        }
 
-        // Update the player's score
         player.score = score;
 
-        resolve();
     });
 }
 
@@ -321,30 +314,3 @@ module.exports = {
     setupGame,
     startGame,
 };
-
-
-/* function addWord(playerName, word) {
-    // Find the player
-    const player = gameState.players.find(p => p.name === playerName);
-
-    // Points for each word length
-    const pointsArray = [0, 0, 9, 16, 25, 36, 49, 64, 81];
-
-    // Calculate the points for the word
-    const points = pointsArray[word.length];
-
-    // Add the word to the player's words array
-    player.words.push({ word, points });
-}
- */
-/* function joinGame(playerName) {
-    // Create a new player object
-    const newPlayer = {
-        name: playerName,
-        letters: [],
-        words: [], // Array to store the words the player has formed
-    };
-
-    // Add the new player to the game state
-    gameState.players.push(newPlayer);
-} */

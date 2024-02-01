@@ -241,11 +241,33 @@ function checkWord(letters, words, word, position) {
         console.log(`The word ${word} is too short to be played.`);
         return false;
     }
+
+    if (words.length > position) {
+        let initWord = words[position];
+        let initWordArray = initWord.split("");
+
+        for (let letter of initWord) {
+            console.log(`Current lettersCopy: ${letters}`);
+            let index = wordArray.indexOf(letter);
+            console.log(`letter ${letter}, index ${index}`);
+            if (index === -1) {
+                // Letter not found in the array, or no more occurrences left, word is not possible
+                console.log(`Letter ${letter} not found in lettersCopy. Word is not possible.`);
+                return false;
+            } else {
+                // Remove only the first occurrence of the letter from the array
+                wordArray.splice(wordArray.indexOf(letter), 1);
+                initWordArray.splice(initWordArray.indexOf(letter), 1);
+            }
+        }
+    } 
     
-    for (let letter of word) {
+    let wordArrayFixed = [...wordArray]
+     
+    for (let letter of wordArrayFixed) {
         console.log(`Current lettersCopy: ${letters}`);
         let index = letters.indexOf(letter);
-        console.log(`letter ${letter}, index ${index}`)
+        console.log(`letter ${letter}, index ${index}`);
         if (index === -1) {
             // Letter not found in the array, or no more occurrences left, word is not possible
             console.log(`Letter ${letter} not found in lettersCopy. Word is not possible.`);
@@ -261,7 +283,20 @@ function checkWord(letters, words, word, position) {
     return wordArray.length === 0;
 }
 
+function calculateScore(player) {
+    return new Promise((resolve, reject) => {
+        const points = [0, 0, 9, 16, 25, 36, 49, 64, 81];
+        let score = 0;
 
+        for (let word of player.words) {
+            const length = word.length;
+            score += points[length];
+        }
+
+        player.score = score;
+
+    });
+}
 
 
 function calculateScore(player) {
