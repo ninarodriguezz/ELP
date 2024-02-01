@@ -10,6 +10,7 @@ import Http
 import Random
 import List exposing (drop)
 import Json.Decode exposing (..)
+import DecoderFile exposing (..)
 
 
 
@@ -35,7 +36,7 @@ type Model
   | Success String
   | FullText String
   | Word String
-  | Def String
+  | Def (List Definition)
 
 
 init : () -> (Model, Cmd Msg)
@@ -55,7 +56,7 @@ init _ =
 type Msg
   = GotText (Result Http.Error String)
   | RandomInt Int
-  | GotDef (Result Http.Error String)
+  | GotJson (Result Http.Error (List Definition))
 
 
 
@@ -76,12 +77,13 @@ update msg model =
         Err _ ->
           (Failure, Cmd.none)
 
-    GotDef result ->
+    GotJson result ->
       case result of
         Ok def ->
           (Def def, Cmd.none)
         Err _ ->  
           (Failure, Cmd.none)
+         
 
     RandomInt number -> case model of
       FullText text -> (Word (getWordAtIndex number (String.words text)), Random.generate RandomInt (Random.int 0 10))  
@@ -117,7 +119,7 @@ view model =
       text "Loading..."
 
     Success texte ->
-      pre [] [ text texte ]
+      pre [] [text texte]
 
     Word word ->
       pre [] [text word]
@@ -125,14 +127,17 @@ view model =
     FullText texte ->
       pre [] [text texte]  
 
-    Def texte ->
-      pre [] [text texte]  
+    Def def ->
+      case def of
+        (x::xs) -> 
+          case xs of
 
--- HTTP
+            [] -> div []
+              [ pre[] [text "Guess the word"]
+              , pre[] [text x.word]
+              ]
 
-getJson : String -> Cmd Msg
-getJson word = 
-  Http.get
-    { url = "https://api.dictionaryapi.dev/api/v2/entries/en/" ++ word
-    , expect = Http.expectString GotDef 
-    }
+            (y::ys) -> pre[] [text "error"]
+        [] -> pre[] [text "err"]    
+
+
