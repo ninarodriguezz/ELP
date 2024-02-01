@@ -84,17 +84,12 @@ function setupGame(playerNames) {
 
 async function startGame(gameState) {
     gameState.currentPlayer = 0;
+    let running = true;
     if (!gameState.players || !Array.isArray(gameState.players)) {
         console.error('gameState.players is not an array');
         return;
     }
-
-    while (!checkEndCondition(gameState)) {
-        if (gameState.currentPlayer === undefined || gameState.currentPlayer >= gameState.players.length) {
-            console.error('gameState.currentPlayer is not a valid index');
-            return;
-        }
-
+    while (running) {
         displayGameState(gameState);
         await playerTurn(gameState.players[gameState.currentPlayer]);
         gameState.currentPlayer = (gameState.currentPlayer + 1) % gameState.players.length;
@@ -109,8 +104,10 @@ async function startGame(gameState) {
             var otherPlayer = (gameState.currentPlayer + 1) % gameState.players.length;
             await jarnac(gameState.players[gameState.currentPlayer], gameState.players[otherPlayer])
         }
+    }    
 }
-}
+
+
 
 function displayGameState() {
     // Display each player's board, letters, and points
@@ -223,7 +220,12 @@ async function playerTurn(player) {
             // Calculate and display the score
             await calculateScore(player);
             await displayGameState();
-
+            
+            if (checkEndCondition(gameState)) {
+                let winner = determineWinner(gameState);
+                console.log(`The game has ended. The winner is ${winner.name}.`);
+                return;
+            }  
         } else {
             console.log(`The word ${result.word} is not possible with the letters ${player.letters.join(', ')}.`);
         }
@@ -264,7 +266,6 @@ async function jarnac(player, otherPlayer) {
     }]);
 
     let newWord = newWordResult.newWord;
-    console.log(newWord, otherPlayer.words)
 
     // Check if the new word is longer than the existing word
     if (newWord.length <= otherPlayer.words[lineNumber - 1].length) {
@@ -297,14 +298,14 @@ function checkWord(letters, words, word, position) {
     }
 
     if (words.length > position) {
-        let initWord = words[position];
-        let initWordArray = initWord.split("");
+        var initWord = words[position - 1];
+        var initWordArray = initWord.split("");
 
         for (let letter of initWord) {
-            let index = wordArray.indexOf(letter);
+            var index = wordArray.indexOf(letter);
             if (index === -1) {
                 // Letter not found in the array, or no more occurrences left, word is not possible
-                console.log(`Letter ${letter} not found in lettersCopy. Word is not possible.`);
+                console.log(`Letter ${letter} not found in ${word}. Word is not possible.`);
                 return false;
             } else {
                 // Remove only the first occurrence of the letter from the array
@@ -312,12 +313,18 @@ function checkWord(letters, words, word, position) {
                 initWordArray.splice(initWordArray.indexOf(letter), 1);
             }
         }
+
+        if (initWordArray.length != 0) {
+            console.log(`To write the word ${word}, you are not using all the letters of the word ${initWord}.`);
+            return false;
+        }
     } 
     
-    let wordArrayFixed = [...wordArray]
+    var wordArrayFixed = [...wordArray]
+    console.log(wordArrayFixed)
      
     for (let letter of wordArrayFixed) {
-        let index = letters.indexOf(letter);
+        var index = letters.indexOf(letter);
         if (index === -1) {
             // Letter not found in the array, or no more occurrences left, word is not possible
             console.log(`Letter ${letter} not found in lettersCopy. Word is not possible.`);
@@ -380,7 +387,7 @@ async function makeMove(playerName, move) {
     const player = gameState.players.find((p) => p.name === playerName);
 
     // Update the player's move
-    player.words[move.position] = move.word;
+    player.words[move.position - 1] = move.word;
 
     for (let letter of move.word) {
         const index = player.letters.indexOf(letter);

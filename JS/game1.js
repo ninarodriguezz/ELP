@@ -89,12 +89,6 @@ async function startGame(gameState) {
         return;
     }
 
-    while (!checkEndCondition(gameState)) {
-        if (gameState.currentPlayer === undefined || gameState.currentPlayer >= gameState.players.length) {
-            console.error('gameState.currentPlayer is not a valid index');
-            return;
-        }
-
         displayGameState(gameState);
         await playerTurn(gameState.players[gameState.currentPlayer]);
         gameState.currentPlayer = (gameState.currentPlayer + 1) % gameState.players.length;
@@ -109,7 +103,6 @@ async function startGame(gameState) {
             jarnac(gameState.currentPlayer, otherPlayer)
 
         }
-}
 }
 
 function displayGameState() {

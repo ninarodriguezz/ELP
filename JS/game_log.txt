@@ -1,2 +1,3 @@
-a a joué le coup : INT
-a a joué le coup : INTA
+a played the word : DRA
+a played the word : CEQ
+a played the word : DRAF
