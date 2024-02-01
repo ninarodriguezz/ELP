@@ -2,8 +2,10 @@ module Main exposing (..)
 
 
 import Browser
+import Http exposing (..)
 import Html exposing (..)
-import Http 
+import Html.Attributes exposing (..)
+import Html.Events exposing (onInput, onClick)
 import Random
 import List exposing (drop)
 import Decoder exposing (..)
@@ -53,6 +55,9 @@ type Msg
   = GotText (Result Http.Error String)
   | RandomInt Int
   | GotJson (Result Http.Error (List Definition))
+  | CheckWord String
+  | ShowWord
+  | HideWord
 
 
 
@@ -98,6 +103,23 @@ update msg model =
       Loading -> (model, Cmd.none)
       Success text -> (model, Cmd.none)
       Def text -> (model, Cmd.none)
+
+    CheckWord word -> 
+      case model of
+        Failure -> (model, Cmd.none)
+        Loading -> (model, Cmd.none)
+        Success text -> (model, Cmd.none)
+        FullText text -> (model, Cmd.none)
+        Word text -> (model, Cmd.none)
+        Def def -> case def of
+          (x::_) -> if x.word == word then 
+            ( Def (Definition "Guessed" [] :: def), Cmd.none)
+            else 
+            ( Def (Definition "Failed" [] :: def), Cmd.none)
+          [] -> (model, Cmd.none)  
+
+    ShowWord -> (model, Cmd.none)
+    HideWord -> (model, Cmd.none)      
     
 
 
@@ -129,10 +151,32 @@ view model =
       ]
 
     viewGame def = div []
-      [ h1 [] [ text "Guess the word Game" ]
+      [ h1 [] [ text "Guess the Word Game" ]
       , h3 [] [ text "Meanings :" ]
       , ul [] (List.map viewMeaning def.definition)
+      , input [ placeholder "Enter a word",  onInput CheckWord ] []
+      , div [] 
+        [ pre [] []
+        , button [ onClick ShowWord ] [ text "Show Answer" ]
+        , button [ onClick HideWord ] [ text "Hide Answer" ]
+        ]
       ]
+
+    viewGuessed def = div []
+      [ h1 [] [ text "Guess the Word Game" ]
+      , h3 [] [ text "Meanings :" ]
+      , ul [] (List.map viewMeaning def.definition)
+      , text ("Exactly ! The word to find was " ++ def.word ++ " !")
+      ]
+
+    viewFailed def = div []
+      [ h1 [] [ text "Guess the Word Game" ]
+      , h3 [] [ text "Meanings :" ]
+      , ul [] (List.map viewMeaning def.definition)
+      , text "You failed to guess the word, you can try again."
+      , input [ placeholder "Enter a word", onInput CheckWord ] []
+      ]  
+
   in
   case model of
     Failure ->
@@ -152,4 +196,4 @@ view model =
 
     Def def -> case def of
       (x::_) -> viewGame x
-      [] -> pre [] [ text "error" ]
+      [] -> pre[] [ text "error" ]

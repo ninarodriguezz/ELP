@@ -1,14 +1,20 @@
-var prompt = require('prompt');
+const prompt = require('prompt');
+const { start } = require('repl');
+const util = require('util');
+const fs = require('fs');
 
 prompt.start();
+const get = util.promisify(prompt.get);
 
-let players = [];
+let gameState = {
+    players: [],
+    currentPlayer: 0,
+};
 
 function onErr(err) {
     console.log(err);
     return 1;
 }
-
 function getPlayerName(playerNumber) {
     prompt.get([{
         name: 'playerName',
@@ -17,22 +23,23 @@ function getPlayerName(playerNumber) {
         required: true
     }], function (err, result) {
         if (err) { return onErr(err); }
-        let player = {
+        const player = {
             name: result.playerName,
+            score: 0,
             letters: [],
             words: [],
+            move: null
         };
-        players.push(player);
+        gameState.players.push(player);
         console.log(`Player ${result.playerName} has joined the game`);
-        if (players.length < 2) {
+        if (gameState.players.length < 2) {
             getPlayerName(2);
         } else {
             // Both players have joined, start the game
-            setupGame(players.map(p => p.name));
+            setupGame(gameState.players.map(p => p.name));
         }
     });
 }
-
 // Start by getting the first player's name
 getPlayerName(1);
 
@@ -48,61 +55,237 @@ function drawLetter() {
 
 // Function to setup the game
 function setupGame(playerNames) {
-    // Reset the game state
-    let gameState = {
-        players: [],
-        currentplayer: 0,
-    };
-
     // Add each player to the game state
     for (const playerName of playerNames) {
-        const player = {
-            name: playerName,
-            score: 0,
-            letters: [],
-            words: [],
-            move: null,  //voir si c'est nécessaire ou pas	
-        };
+        // Find the player in gameState.players
+        let player = gameState.players.find(p => p.name === playerName);
 
         // Draw 6 letters for the player
         for (let i = 0; i < 6; i++) {
             player.letters.push(drawLetter());
         }
-
-        gameState.players.push(player);
     }
     startGame(gameState);
-
 }
 
-// Function to start the game
-function startGame(gameState) {
-    displayGameState(gameState);
-}
+async function startGame(gameState) {
+    gameState.currentPlayer = 0;
+    if (!gameState.players || !Array.isArray(gameState.players)) {
+        console.error('gameState.players is not an array');
+        return;
+    }
 
-function displayGameState(gameState) {
-    // Display each player's board, letters, and points
-    for (const player of gameState.players) {
-        console.log(`${player.name}'s board:`);
-        for (const word of player.words) {
-            console.log(word.split('').join(' '));
+    while (!checkEndCondition(gameState)) {
+        if (gameState.currentPlayer === undefined || gameState.currentPlayer >= gameState.players.length) {
+            console.error('gameState.currentPlayer is not a valid index');
+            return;
         }
+
+        displayGameState(gameState);
+        await playerTurn(gameState.players[gameState.currentPlayer]);
+        gameState.currentPlayer = (gameState.currentPlayer + 1) % gameState.players.length;
+        //Ask the player if he wants to do a "jarnac"
+        const jarnacResult = await get([{
+            name: 'jarnac',
+            description: gameState.players[gameState.currentPlayer].name + ', do you want to do a "jarnac"? (yes/no)',
+            type: 'string',
+            required: true
+        }]);
+        if (jarnacResult.jarnac.toLowerCase() === 'yes') {
+            //call the function jarnac
+            jarnac(gameState.currentPlayer)
+
+        }
+}
+}
+
+function displayGameState() {
+    // Display each player's board, letters, and points
+    try {
+        for (const player of gameState.players) {
+            console.log(`${player.name}'s board:`);
+            for (const word of player.words) {
+                if (word) {
+                    console.log(word.split('').join(' '));
+                }
+            }
         console.log(`${player.name}'s letters: ${player.letters.join(' ')}`);
         console.log(`${player.name}'s points: ${player.score}`);
+        }
+    } catch (err) {
+        console.error('Error displaying game state:', err);
     }
 }
 
+function checkEndCondition(gameState) {
+    for (let player of gameState.players) {
+        if (player.words.length === 8) {
+            // The game ends if a player has 8 words
+            return true;
+        }
+    }
+    // The game continues if no player has 8 words
+    return false;
+}
 
-// Function to handle a player making a move
-function makeMove(playerName, move) {
+function determineWinner(gameState) {
+    let highestScore = 0;
+    let winner = null;
+
+    for (let player of gameState.players) {
+        let score = player.words.reduce((total, word) => total + Math.pow(word.length, 2), 0); 
+        if (score > highestScore) {
+            highestScore = score;
+            winner = player;
+        }
+    }
+
+    return winner;
+}
+
+async function playerTurn(player) {
+    let playAgain = true;
+
+    while (playAgain) {
+        // Ask the player for a word and the position to play it
+        const result = await get([{
+            name: 'word',
+            description: `${player.name}, enter a word to play`,
+            type: 'string',
+            required: true
+        }, {
+            name: 'position',
+            description: 'Enter the line where you want to play the word',
+            type: 'number',
+            required: true,
+            conform: function(value) {
+                const maxPosition = player.words.length + 1;
+                return value >= 1 && value <= maxPosition;
+            },
+            message: 'Position must be between 1 and ' + (player.words.length + 1)
+        }]);
+
+        // Check if the word is possible
+        if (checkWord(player.letters, player.words, result.word, result.position)) {
+            // If the word is possible, make the move
+            const move = { word: result.word, position: result.position };
+            await makeMove(player.name, move);
+
+            // Draw a new letter for the player
+            player.letters.push(drawLetter());
+
+            console.log(`${player.name} played the word ${result.word} at position ${result.position}.`);
+            console.log(`${player.name}'s words are now: ${player.words.join(', ')}`);
+            console.log(`${player.name}'s letters are now: ${player.letters.join(', ')}`);
+
+            // Ask the player if they want to play again
+            const playAgainResult = await get([{
+                name: 'playAgain',
+                description: 'Do you want to play again? (yes/no)',
+                type: 'string',
+                required: true
+            }]);
+
+            playAgain = playAgainResult.playAgain.toLowerCase() === 'yes';
+        } else {
+            console.log(`The word ${result.word} is not possible with the letters ${player.letters.join(', ')}.`);
+            playAgain = false;
+            await Promise.all([calculateScore(player), displayGameState()]);
+        }
+    }
+}
+function jarnac(player) {
+    // Ask for the line number
+    let lineNumber = prompt("Enter the line number of the word you want to modify:");
+
+    // Convert the line number to an integer
+    lineNumber = parseInt(lineNumber, 10);
+
+    // Validate the line number
+    if (isNaN(lineNumber) || lineNumber < 1 || lineNumber > player.words.length) {
+        console.error("Invalid line number");
+        return;
+    }
+
+    // Ask for the new word
+    let newWord = prompt("Enter the new word:");
+
+    // Replace the word at the given line number with the new word
+    player.words[lineNumber - 1] = newWord;
+}
+
+// Function to check if a word is possible with the given letters
+function checkWord(letters, word) {
+    // Create a copy of the letters array so we don't modify the original
+    let lettersCopy = [...letters];
+
+    for (let letter of word) {
+        console.log(`Current lettersCopy: ${lettersCopy}`);
+        let index = lettersCopy.indexOf(letter);
+        if (index === -1) {
+            // Letter not found in the array, or no more occurrences left, word is not possible
+            console.log(`Letter ${letter} not found in lettersCopy. Word is not possible.`);
+            return false;
+        } else {
+            // Remove only the first occurrence of the letter from the array
+            lettersCopy.splice(index, 1);
+        }
+    }
+
+    // All letters found, word is possible only if there are no remaining occurrences of letters
+    console.log(`All letters found. Remaining lettersCopy: ${lettersCopy}`);
+    return lettersCopy.length === 0;
+}
+
+
+
+
+function calculateScore(player) {
+    return new Promise((resolve, reject) => {
+        // TODO: Calculate the score based on the player's words and letters
+        // You can add your code here
+
+        // For example, let's assume the score is the total number of letters in the player's words
+        const score = player.words.reduce((total, word) => total + word.length, 0);
+
+        // Update the player's score
+        player.score = score;
+
+        resolve();
+    });
+}
+
+// Function to log a move to the game log file
+function logMove(playerName, move) {
+    const log = `${playerName} a joué le coup : ${move.word}\n`;
+    return new Promise((resolve, reject) => {
+        fs.appendFile('game_log.txt', log, (err) => {
+            if (err) reject(err);
+            else resolve();
+        });
+    });
+}
+
+async function makeMove(playerName, move) {
     // Find the player in the game state
     const player = gameState.players.find((p) => p.name === playerName);
 
     // Update the player's move
-    player.move = move;
+    player.words[move.position] = move.word;
 
-    // Return the updated game state
-    return gameState;
+    for (let letter of move.word) {
+        const index = player.letters.indexOf(letter);
+        if (index !== -1) {
+            player.letters.splice(index, 1);
+        }
+    }
+
+    try {
+        // Log the move
+        await logMove(playerName, move);
+    } catch (err) {
+        console.error('Error logging move:', err);
+    }
 }
 
 // Function to get the current game state
@@ -116,11 +299,10 @@ module.exports = {
     getGameState,
     setupGame,
     startGame,
-    addWord,
 };
 
 
-function addWord(playerName, word) {
+/* function addWord(playerName, word) {
     // Find the player
     const player = gameState.players.find(p => p.name === playerName);
 
@@ -133,7 +315,7 @@ function addWord(playerName, word) {
     // Add the word to the player's words array
     player.words.push({ word, points });
 }
-
+ */
 /* function joinGame(playerName) {
     // Create a new player object
     const newPlayer = {
