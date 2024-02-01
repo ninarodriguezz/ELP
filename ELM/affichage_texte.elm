@@ -56,7 +56,6 @@ type Msg
   = GotText (Result Http.Error String)
   | RandomInt Int
   | GotDef (Result Http.Error String)
-  | GotWord
 
 
 
@@ -85,12 +84,9 @@ update msg model =
           (Failure, Cmd.none)
 
     RandomInt number -> case model of
-      FullText text -> (Word (getWordAtIndex number (String.words text)), GotWord)  
+      FullText text -> (Word (getWordAtIndex number (String.words text)), Random.generate RandomInt (Random.int 0 10))  
       Word word -> ( Loading
-        , Http.get
-            { url = "https://api.dictionaryapi.dev/api/v2/entries/en/" ++ word
-            , expect = Http.expectString GotDef
-            }
+        , getJson word
         )
       Failure -> (model, Cmd.none)
       Loading -> (model, Cmd.none)
@@ -131,3 +127,12 @@ view model =
 
     Def texte ->
       pre [] [text texte]  
+
+-- HTTP
+
+getJson : String -> Cmd Msg
+getJson word = 
+  Http.get
+    { url = "https://api.dictionaryapi.dev/api/v2/entries/en/" ++ word
+    , expect = Http.expectString GotDef 
+    }
