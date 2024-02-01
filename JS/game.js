@@ -1,8 +1,10 @@
 const prompt = require('prompt');
-const { start } = require('repl');
 const util = require('util');
 const fs = require('fs');
+const logFile = 'game_log.txt';
 
+
+// Use of fs.writeFile to clean the file content
 prompt.start();
 const get = util.promisify(prompt.get);
 
@@ -15,6 +17,16 @@ function onErr(err) {
     console.log(err);
     return 1;
 }
+
+function cleanFile() {
+    fs.writeFile(logFile, '', (err) => {
+        if (err) {
+        console.error(err);
+        return;
+        }
+    });
+}    
+
 function getPlayerName(playerNumber) {
     prompt.get([{
         name: 'playerName',
@@ -40,6 +52,8 @@ function getPlayerName(playerNumber) {
         }
     });
 }
+
+cleanFile();
 // Start by getting the first player's name
 getPlayerName(1);
 
@@ -195,15 +209,10 @@ async function playerTurn(player) {
             console.log(`${player.name}'s words are now: ${player.words.join(', ')}`);
             console.log(`${player.name}'s letters are now: ${player.letters.join(', ')}`);
 
-/*             // Ask the player if they want to play again
-            const playAgainResult = await get([{
-                name: 'playAgain',
-                description: 'Do you want to play again? (yes/no)',
-                type: 'string',
-                required: true
-            }]);
+            // Calculate and display the score
+            await calculateScore(player);
+            await displayGameState();
 
-            playAgain = playAgainResult.playAgain.toLowerCase() === 'yes'; */
         } else {
             console.log(`The word ${result.word} is not possible with the letters ${player.letters.join(', ')}.`);
 /*             playAgain = false;
@@ -247,9 +256,7 @@ function checkWord(letters, words, word, position) {
         let initWordArray = initWord.split("");
 
         for (let letter of initWord) {
-            console.log(`Current lettersCopy: ${letters}`);
             let index = wordArray.indexOf(letter);
-            console.log(`letter ${letter}, index ${index}`);
             if (index === -1) {
                 // Letter not found in the array, or no more occurrences left, word is not possible
                 console.log(`Letter ${letter} not found in lettersCopy. Word is not possible.`);
@@ -265,9 +272,7 @@ function checkWord(letters, words, word, position) {
     let wordArrayFixed = [...wordArray]
      
     for (let letter of wordArrayFixed) {
-        console.log(`Current lettersCopy: ${letters}`);
         let index = letters.indexOf(letter);
-        console.log(`letter ${letter}, index ${index}`);
         if (index === -1) {
             // Letter not found in the array, or no more occurrences left, word is not possible
             console.log(`Letter ${letter} not found in lettersCopy. Word is not possible.`);
@@ -318,7 +323,7 @@ function calculateScore(player) {
 function logMove(playerName, move) {
     const log = `${playerName} a joué le coup : ${move.word}\n`;
     return new Promise((resolve, reject) => {
-        fs.appendFile('game_log.txt', log, (err) => {
+        fs.appendFile(logFile, log, (err) => {
             if (err) reject(err);
             else resolve();
         });
