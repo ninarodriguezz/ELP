@@ -215,7 +215,7 @@ async function playerTurn(player) {
             const word = result.word.toUpperCase();
 
             // Check if the word is possible
-            if (checkWord(player.letters, player.words, word, result.position)) {
+            if (checkWord(player.letters, player.words, word, result.position)[0]) {
                 // If the word is possible, make the move
                 const move = { word: word, position: result.position };
                 await makeMove(player.name, move);
@@ -292,7 +292,7 @@ async function jarnac(player, otherPlayer) {
     }
 
     // Check if the word is possible
-    if (checkWord(otherPlayer.letters, otherPlayer.words, newWord, lineNumber)) {
+    if (checkWord(otherPlayer.letters, otherPlayer.words, newWord, lineNumber)[0]) {
         // If the word is possible, make the move
         const move = { word: newWord, position: lineNumber };
         await makeMove(otherPlayer.name, move);
@@ -312,7 +312,7 @@ function checkWord(letters, words, word, position) {
 
     if (word.length < 3) {
         console.log(`The word ${word} is too short to be played.`);
-        return false;
+        return false, [];
     }
 
     if (words.length > position) {
@@ -324,7 +324,7 @@ function checkWord(letters, words, word, position) {
             if (index === -1) {
                 // Letter not found in the array, or no more occurrences left, word is not possible
                 console.log(`Letter ${letter} not found in ${word}. Word is not possible.`);
-                return false;
+                return false, [];
             } else {
                 // Remove only the first occurrence of the letter from the array
                 wordArray.splice(wordArray.indexOf(letter), 1);
@@ -334,28 +334,29 @@ function checkWord(letters, words, word, position) {
 
         if (initWordArray.length != 0) {
             console.log(`To write the word ${word}, you are not using all the letters of the word ${initWord}.`);
-            return false;
+            return false, [];
         }
     } 
     
-    var wordArrayFixed = [...wordArray]
-console.log(wordArrayFixed)
+    var wordArrayFixed = [...wordArray];
+    var lettersUsed = [];
      
     for (let letter of wordArrayFixed) {
         var index = letters.indexOf(letter);
         if (index === -1) {
             // Letter not found in the array, or no more occurrences left, word is not possible
             console.log(`Letter ${letter} not found in lettersCopy. Word is not possible.`);
-            return false;
+            return false, [];
         } else {
             // Remove only the first occurrence of the letter from the array
+            lettersUsed.push(letter);
             wordArray.splice(wordArray.indexOf(letter), 1);
             lettersCopy.splice(lettersCopy.indexOf(letter), 1);
         }
     }
 
     // All letters found, word is possible only if there are no remaining occurrences of letters
-    return wordArray.length === 0;
+    return wordArray.length === 0, lettersUsed;
 }
 
 function calculateScore(player) {
