@@ -84,7 +84,6 @@ async function startGame(gameState) {
         displayGameState(gameState);
         await playerTurn(gameState.players[gameState.currentPlayer]);
         gameState.currentPlayer = (gameState.currentPlayer + 1) % gameState.players.length;
-        //Ask the player if he wants to do a "jarnac"
         const jarnacResult = await get([{
             name: 'jarnac',
             description: gameState.players[gameState.currentPlayer].name + ', do you want to do a "jarnac"? (yes/no)',
@@ -211,6 +210,7 @@ async function playerTurn(player) {
         }
     }
 }
+
 function jarnac(player) {
     // Ask for the line number
     let lineNumber = prompt("Enter the line number of the word you want to modify:");
@@ -237,11 +237,6 @@ function checkWord(letters, words, word, position) {
     let wordArray = word.split("");
     let lettersCopy = [...letters];
 
-    if (word.length < 3) {
-        console.log(`The word ${word} is too short to be played.`);
-        return false;
-    }
-    
     for (let letter of word) {
         console.log(`Current lettersCopy: ${letters}`);
         let index = letters.indexOf(letter);
@@ -253,8 +248,10 @@ function checkWord(letters, words, word, position) {
         } else {
             // Remove only the first occurrence of the letter from the array
             wordArray.splice(wordArray.indexOf(letter), 1);
-            lettersCopy.splice(lettersCopy.indexOf(letter), 1);
+            lettersCopy.splice(index, 1)
         }
+        console.log(`wordArray ${wordArray}`)
+        console.log(lettersCopy)
     }
 
     // All letters found, word is possible only if there are no remaining occurrences of letters
