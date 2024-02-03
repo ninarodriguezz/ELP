@@ -6,11 +6,11 @@ This repository contains a Jarnac word game implemented in Node.js. The game all
 
 ## Files
 
-This project contains the 5 following files :
+This project contains the 3 following files :
     
     - game.js: This file contains the main game logic, including the game loop and the functions to start and set up the game.
     - move.js: This file contains the logic for making moves in the game, including playing a word, passing a turn, and performing a "jarnac".
-    - player.js: This file defines the Player class, which represents a player in the game. Each player has a name, a set of letters, and a set of words they have played.
+    - state.js
 
 ## Getting Started
 
@@ -26,10 +26,10 @@ Before running the game, make sure you have Node.js installed on your machine.
 
 ## Usage
 
-To start the game, run the main script:
+To start the game, run the main script named game.js:
 
 ```bash
-node main.js
+node game.js
 ```
 
 All interaction with the game is done through the terminal. So you can then enter the players' names in the terminal and start to play to Jarnac.
