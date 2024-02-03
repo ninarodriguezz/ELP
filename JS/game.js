@@ -2,16 +2,11 @@ const prompt = require('prompt');
 const util = require('util');
 const fs = require('fs');
 const logFile = 'game_log.txt';
+const mv = require('./move');
+const { getGameState, setGameState, displayGameState } = require('./state');
 
-
-// Use of fs.writeFile to clean the file content
 prompt.start();
 const get = util.promisify(prompt.get);
-
-let gameState = {
-    players: [],
-    currentPlayer: 0,
-};
 
 function onErr(err) {
     console.log(err);
@@ -39,60 +34,97 @@ function getPlayerName(playerNumber) {
             name: result.playerName,
             score: 0,
             letters: [],
-            words: [],
-            move: null
+            words: []
         };
+        var gameState = getGameState();
         gameState.players.push(player);
         console.log(`Player ${result.playerName} has joined the game`);
         if (gameState.players.length < 2) {
             getPlayerName(2);
         } else {
-            // Both players have joined, start the game
+
             setupGame(gameState.players.map(p => p.name));
         }
+        setGameState(gameState);
     });
 }
 
-cleanFile();
-// Start by getting the first player's name
-getPlayerName(1);
-
-// Define the pool of letters
 const letters = 'A'.repeat(14) + 'B'.repeat(4) + 'C'.repeat(7) + 'D'.repeat(5) + 'E'.repeat(19) + 'F'.repeat(2) + 'G'.repeat(4) + 'H'.repeat(2) + 'I'.repeat(11) + 'J'.repeat(1) + 'K'.repeat(1) + 'L'.repeat(6) + 'M'.repeat(5) + 'N'.repeat(9) + 'O'.repeat(8) + 'P'.repeat(4) + 'Q'.repeat(1) + 'R'.repeat(10) + 'S'.repeat(7) + 'T'.repeat(9) + 'U'.repeat(8) + 'V'.repeat(2) + 'W'.repeat(1) + 'X'.repeat(1) + 'Y'.repeat(1) + 'Z'.repeat(2);
 const lettersArray = letters.split('');
 
-// Function to draw a random letter from the pool
+
 function drawLetter() {
     const index = Math.floor(Math.random() * lettersArray.length);
     return lettersArray.splice(index, 1)[0];
 }
 
-// Function to setup the game
+/**
+ * Sets up the game with the given player names.
+ * 
+ * This function initializes the game state, creates a player object for each player name, 
+ * draws 5 letters for each player, and starts the game.
+ * 
+ * @param {Array} playerNames - An array of strings, each representing a player's name.
+ * 
+ * @returns {void}
+ */
+
 function setupGame(playerNames) {
-    // Add each player to the game state
+    let gameState = getGameState();
     for (const playerName of playerNames) {
-        // Find the player in gameState.players
         let player = gameState.players.find(p => p.name === playerName);
 
-        // Draw 6 letters for the player
-        for (let i = 0; i < 6; i++) {
+        for (let i = 0; i < 5; i++) {
             player.letters.push(drawLetter());
         }
     }
+    setGameState(gameState);
     startGame(gameState);
+
 }
 
+/**
+ * Starts the game with the given game state.
+ * 
+ * This function initializes the game, sets the current player, and enters a loop that continues until the game ends. 
+ * In each iteration of the loop, it displays the game state, sets a 60-second timer for the player's turn, 
+ * and handles the player's turn. If the player does not complete their turn within 60 seconds, 
+ * the function catches the timeout error and moves on to the next player. 
+ * After each turn, it checks if the current player wants to perform a "jarnac" and handles it if so. 
+ * It also logs the end of each turn to a file.
+ * 
+ * @param {Object} gameState - The state of the game. This object should have a 'players' property that is an array of player objects, 
+ * and a 'currentPlayer' property that is the index of the current player in the 'players' array.
+ * 
+ * @returns {Promise} - A promise that resolves when the game ends.
+ * 
+ * @async
+ */
 async function startGame(gameState) {
     gameState.currentPlayer = 0;
-let running = true;
+    let running = true;
     if (!gameState.players || !Array.isArray(gameState.players)) {
         console.error('gameState.players is not an array');
         return;
     }
     while (running) {
-        displayGameState(gameState);
-        await playerTurn(gameState.players[gameState.currentPlayer]);
+        displayGameState();
+        console.log("You have 60 seconds to complete your turn."); // Added line
+        const timer = new Promise((resolve, reject) => {
+            setTimeout(() => {
+                reject(new Error('Time out'));
+            }, 60000); 
+        });
+        try {
+            await Promise.race([playerTurn(gameState.players[gameState.currentPlayer]), timer]);
+        } catch (error) {
+            console.error(error.message);
+            gameState.currentPlayer = (gameState.currentPlayer + 1) % gameState.players.length;
+            setGameState(gameState);
+            continue; 
+        }
         gameState.currentPlayer = (gameState.currentPlayer + 1) % gameState.players.length;
+        setGameState(gameState);
         const jarnacResult = await get([{
             name: 'jarnac',
             description: gameState.players[gameState.currentPlayer].name + ', do you want to do a "jarnac"? (yes/no)',
@@ -101,42 +133,36 @@ let running = true;
         }]);
         if (jarnacResult.jarnac.toLowerCase() === 'yes') {
             var otherPlayer = (gameState.currentPlayer + 1) % gameState.players.length;
-            await jarnac(gameState.players[gameState.currentPlayer], gameState.players[otherPlayer])
+            await mv.jarnac(gameState.players[gameState.currentPlayer], gameState.players[otherPlayer])
         }
-}
-}
-
-
-function displayGameState() {
-    // Display each player's board, letters, and points
-    try {
-        for (const player of gameState.players) {
-            console.log(`${player.name}'s board:`);
-            for (const word of player.words) {
-                if (word) {
-                    console.log(word.split('').join(' '));
-                }
-            }
-        console.log(`${player.name}'s letters: ${player.letters.join(' ')}`);
-        console.log(`${player.name}'s points: ${player.score}`);
-        }
-    } catch (err) {
-        console.error('Error displaying game state:', err);
+        fs.appendFileSync('game_log.txt', '----------------------\n');
     }
 }
 
-function checkEndCondition(gameState) {
+/**
+ * Checks if the end condition of the game has been met.
+ * 
+ * This function retrieves the current game state and checks if any player has played 8 words. 
+ * If a player has 8 words, the game ends and the function returns true. 
+ * If no player has 8 words, the function returns false.
+ * 
+ * @returns {boolean} - Returns true if the end condition of the game has been met, false otherwise.
+ */
+function checkEndCondition() {
+    // ... function body ...
+}
+function checkEndCondition() {
+    gameState = getGameState()
     for (let player of gameState.players) {
         if (player.words.length === 8) {
-            // The game ends if a player has 8 words
             return true;
         }
     }
-    // The game continues if no player has 8 words
     return false;
 }
 
-function determineWinner(gameState) {
+function determineWinner() {
+    gameState = getGameState();
     let highestScore = 0;
     let winner = null;
 
@@ -151,287 +177,116 @@ function determineWinner(gameState) {
     return winner;
 }
 
+/**
+ * Handles a player's turn in the game.
+ * 
+ * This function manages the actions a player can take during their turn, including drawing a letter, choosing to play a word or pass their turn, 
+ * validating the chosen action, and playing a word if the action is 'play'. It also checks if the game has ended after each turn.
+ * 
+ * @param {Object} player - The player who is currently taking their turn. The player object should have properties for 'letters' (an array of letters the player can play), 
+ * 'words' (an array of words the player has played), and 'name' (the player's name).
+ * 
+ * @returns {Promise} - A promise that resolves when the player's turn is over. If the game ends during the player's turn, the function will return immediately.
+ * 
+ * @async
+ */
 async function playerTurn(player) {
     let playAgain = true;
 
-    // Start a timer for 1 minute
-    const timer = new Promise((resolve, reject) => {
-        setTimeout(() => {
-            console.log(`${player.name}'s turn has ended due to time out.`);
-            playAgain = false;
-            resolve();
-        }, 60000); // 60000 milliseconds = 1 minute
-    });
-
     while (playAgain) {
-        // Wrap the game logic in a promise
-        const gameLogic = new Promise(async (resolve, reject) => {
-            // Ask the player if they want to play a word or pass their turn
-            let validAction = false;
+        let validAction = false;
+        player.letters.push(drawLetter());
 
-            while (!validAction) {
-                const actionResult = await get([{
-                    name: 'action',
-                    description: `${player.name}, do you want to play a word or pass your turn? (play/pass)`,
-                    type: 'string',
-                    required: true
-                }]);
-
-                if (actionResult.action.toLowerCase() === 'pass') {
-                    console.log(`${player.name} has decided to pass their turn.`);
-                    playAgain = false;
-                    validAction = true;
-                } else if (actionResult.action.toLowerCase() === 'play') {
-                    validAction = true;
-                } else {
-                    console.log('Invalid action. Please enter "play" or "pass".');
-                }
-            }
-
-            if (!playAgain) {
-                resolve();
-                return;
-            }
-
-            // Ask the player for a word and the position to play it
-            const result = await get([{
-                name: 'word',
-                description: `${player.name}, enter a word to play`,
+        while (!validAction) {
+            const actionResult = await get([{
+                name: 'action',
+                description: `${player.name}, do you want to play a word or pass your turn? (play/pass)`,
                 type: 'string',
                 required: true
-            }, {
-                name: 'position',
-                description: 'Enter the line where you want to play the word',
-                type: 'number',
-                required: true,
-                conform: function(value) {
-                    var maxPosition = player.words.length + 1;
-                    return value >= 1 && value <= maxPosition;
-                },
-                message: 'Position must be between 1 and ' + (player.words.length + 1)
             }]);
 
-            // Convert the word to uppercase
-            const word = result.word.toUpperCase();
-
-            // Check if the word is possible
-            if (checkWord(player.letters, player.words, word, result.position)[0]) {
-                // If the word is possible, make the move
-                const move = { word: word, position: result.position };
-                await makeMove(player.name, move);
-
-                // Draw a new letter for the player
-                player.letters.push(drawLetter());
-
-                console.log(`${player.name} played the word ${result.word} at position ${result.position}.`);
-                console.log(`${player.name}'s words are now: ${player.words.join(', ')}`);
-                console.log(`${player.name}'s letters are now: ${player.letters.join(', ')}`);
-
-                // Calculate and display the score
-                await calculateScore(player);
-                await displayGameState();
-
-                if (checkEndCondition(gameState)) {
-                    let winner = determineWinner(gameState);
-                    console.log(`The game has ended. The winner is ${winner.name}.`);
-                    resolve();
-                    return;
-                }
+            if (actionResult.action.toLowerCase() === 'pass') {
+                console.log(`${player.name} has decided to pass his turn.`);
+                playAgain = false;
+                validAction = true;
+            } else if (actionResult.action.toLowerCase() === 'play') {
+                validAction = true;
             } else {
-                console.log(`The word ${result.word} is not possible with the letters ${player.letters.join(', ')}.`);
+                console.log('Invalid action. Please enter "play" or "pass".');
             }
+        }
 
-            resolve();
-        });
+        if (!playAgain) {
+            break;
+        }
 
-        // Use Promise.race to wait for either the game logic or the timer to finish
-        await Promise.race([gameLogic, timer]);
-    }
-}
-
-async function jarnac(player, otherPlayer) {
-    // Ask for the line number
-    const lineNumberResult = await get([{
-        name: 'lineNumber',
-        description: 'Enter the line number of the word you want to modify',
-        type: 'number',
-        required: true
-    }]);
-
-    let lineNumber = lineNumberResult.lineNumber;
-
-    while (isNaN(lineNumber) || lineNumber < 1 || lineNumber > otherPlayer.words.length) {
-        const lineNumberResult = await get([{
-            name: 'lineNumber',
-            description: 'Enter the line number of the word you want to modify',
-            type: 'number',
+        const result = await get([{
+            name: 'word',
+            description: `${player.name}, enter a word to play`,
+            type: 'string',
             required: true
+        }, {
+            name: 'position',
+            description: 'Enter the line where you want to play the word',
+            type: 'number',
+            required: true,
+            conform: function(value) {
+                var maxPosition = player.words.length + 1;
+                return value >= 1 && value <= maxPosition;
+            },
+            message: 'Position must be between 1 and ' + (player.words.length + 1)
         }]);
+        const word = result.word.toUpperCase();
+        var [isPossible, lettersUsed] = mv.checkWord(player.letters, player.words, word, result.position);
+        if (isPossible) {
+            const move = { word: word, position: result.position };
+            await mv.makeMove(player, move, lettersUsed);
 
-        lineNumber = lineNumberResult.lineNumber;
+            console.log(`${player.name} played the word ${result.word} at position ${result.position}.`);
+            console.log(`${player.name}'s words are now: ${player.words.join(', ')}`);
+            console.log(`${player.name}'s letters are now: ${player.letters.join(', ')}`);
 
-        if (isNaN(lineNumber) || lineNumber < 1 || lineNumber > otherPlayer.words.length) {
-            console.error("Invalid line number");
-        }
-    }
+            await calculateScore(player);
+            await displayGameState();
 
-    // Ask for the new word
-    const newWordResult = await get([{
-        name: 'newWord',
-        description: 'Enter the new word',
-        type: 'string',
-        required: true
-    }]);
-
-    let newWord = newWordResult.newWord;
-    
-    // Check if the new word is longer than the existing word
-    if (newWord.length <= otherPlayer.words[lineNumber - 1].length) {
-        console.error("The new word must be longer than the existing word");
-        return;
-    }
-
-    // Check if the word is possible
-    if (checkWord(otherPlayer.letters, otherPlayer.words, newWord, lineNumber)[0]) {
-        // If the word is possible, make the move
-        const move = { word: newWord, position: lineNumber };
-        await makeMove(otherPlayer.name, move);
-
-        console.log(`${player.name} modified the word at line ${lineNumber} to ${newWord}.`);
-        console.log(`${otherPlayer.name}'s words are now: ${otherPlayer.words.join(', ')}`);
-    } else {
-        console.log(`The word ${newWord} is not possible with the letters ${otherPlayer.letters.join(', ')}.`);
-    }
-}
-
-// Function to check if a word is possible with the given letters
-function checkWord(letters, words, word, position) {
-    // Create a copy of the letters array so we don't modify the original
-    let wordArray = word.split("");
-    let lettersCopy = [...letters];
-
-    if (word.length < 3) {
-        console.log(`The word ${word} is too short to be played.`);
-        return false, [];
-    }
-
-    if (words.length > position) {
-        var initWord = words[position - 1];
-        var initWordArray = initWord.split("");
-
-        for (let letter of initWord) {
-            var index = wordArray.indexOf(letter);
-            if (index === -1) {
-                // Letter not found in the array, or no more occurrences left, word is not possible
-                console.log(`Letter ${letter} not found in ${word}. Word is not possible.`);
-                return false, [];
-            } else {
-                // Remove only the first occurrence of the letter from the array
-                wordArray.splice(wordArray.indexOf(letter), 1);
-                initWordArray.splice(initWordArray.indexOf(letter), 1);
+            if (checkEndCondition()) {
+                let winner = determineWinner();
+                console.log(`The game has ended. The winner is ${winner.name}.`);
+                return;
             }
-        }
-
-        if (initWordArray.length != 0) {
-            console.log(`To write the word ${word}, you are not using all the letters of the word ${initWord}.`);
-            return false, [];
-        }
-    } 
-    
-    var wordArrayFixed = [...wordArray];
-    var lettersUsed = [];
-     
-    for (let letter of wordArrayFixed) {
-        var index = letters.indexOf(letter);
-        if (index === -1) {
-            // Letter not found in the array, or no more occurrences left, word is not possible
-            console.log(`Letter ${letter} not found in lettersCopy. Word is not possible.`);
-            return false, [];
         } else {
-            // Remove only the first occurrence of the letter from the array
-            lettersUsed.push(letter);
-            wordArray.splice(wordArray.indexOf(letter), 1);
-            lettersCopy.splice(lettersCopy.indexOf(letter), 1);
+            console.log(`The word ${result.word} is not possible with the letters ${player.letters.join(', ')}.`);
         }
     }
 
-    // All letters found, word is possible only if there are no remaining occurrences of letters
-    return wordArray.length === 0, lettersUsed;
 }
 
 function calculateScore(player) {
     return new Promise((resolve, reject) => {
-        const points = [0, 0, 9, 16, 25, 36, 49, 64, 81];
-        let score = 0;
+        try {
+            const points = [0, 0, 0, 9, 16, 25, 36, 49, 64, 81];
+            let score = 0;
 
-        for (let word of player.words) {
-            const length = word.length;
-            score += points[length];
+            for (let word of player.words) {
+                const length = word.length;
+                score += points[length];
+            }
+
+            player.score = score;
+            resolve(); 
+        } catch (error) {
+            reject(error); 
         }
-
-        player.score = score;
-
     });
 }
 
+cleanFile();
+getPlayerName(1);
 
-function calculateScore(player) {
-    return new Promise((resolve, reject) => {
-        const points = [0, 0, 9, 16, 25, 36, 49, 64, 81];
-        let score = 0;
-
-        for (let word of player.words) {
-            const length = word.length;
-            score += points[length];
-        }
-
-        player.score = score;
-
-    });
-}
-
-// Function to log a move to the game log file
-function logMove(playerName, move) {
-    const log = `${playerName} played the word : ${move.word}\n`;
-    return new Promise((resolve, reject) => {
-        fs.appendFile(logFile, log, (err) => {
-            if (err) reject(err);
-            else resolve();
-        });
-    });
-}
-
-async function makeMove(playerName, move) {
-    // Find the player in the game state
-    const player = gameState.players.find((p) => p.name === playerName);
-
-    // Update the player's move
-    player.words[move.position - 1] = move.word;
-
-    for (let letter of move.word) {
-        const index = player.letters.indexOf(letter);
-        if (index !== -1) {
-            player.letters.splice(index, 1);
-        }
-    }
-
-    try {
-        // Log the move
-        await logMove(playerName, move);
-    } catch (err) {
-        console.error('Error logging move:', err);
-    }
-}
-
-// Function to get the current game state
-function getGameState() {
-    return gameState;
-}
-
-// Export the functions for use in other modules
 module.exports = {
-    makeMove,
-    getGameState,
+    onErr,
+    cleanFile,
+    getPlayerName, 
     setupGame,
     startGame,
 };

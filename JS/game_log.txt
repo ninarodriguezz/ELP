@@ -1,1 +1,7 @@
-a played the word : CODE
+a played the word : BAJ in line 1
+a played the word : NAI in line 2
+a played the word : BAJE in line 1
+JARNAC! b has stolen the word NAIA from a in line 2
+----------------------
+b played the word : SMR in line 2
+----------------------
