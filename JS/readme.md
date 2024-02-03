@@ -11,8 +11,6 @@ This project contains the 5 following files :
     - game.js: This file contains the main game logic, including the game loop and the functions to start and set up the game.
     - move.js: This file contains the logic for making moves in the game, including playing a word, passing a turn, and performing a "jarnac".
     - player.js: This file defines the Player class, which represents a player in the game. Each player has a name, a set of letters, and a set of words they have played.
-    - letter.js: This file contains the logic for drawing letters and managing the letter pool.
-    - word.js: This file contains the logic for managing words, including checking if a word is valid and adding a word to a player's set of words.
 
 ## Getting Started
 
